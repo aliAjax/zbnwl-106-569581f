@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { MaintenanceRules } from '../types/plot';
-
-const STORAGE_KEY = 'community-garden-maintenance-rules';
+import { useGardenStore } from '../store/useGardenStore';
 
 export const DEFAULT_MAINTENANCE_RULES: MaintenanceRules = {
   waterOverdueDays: 3,
@@ -13,37 +12,40 @@ export const DEFAULT_MAINTENANCE_RULES: MaintenanceRules = {
 };
 
 export const useMaintenanceRules = () => {
+  const currentGardenId = useGardenStore((state) => state.currentGardenId);
+  const gardenData = useGardenStore((state) =>
+    state.currentGardenId ? state.gardenData[state.currentGardenId] : null
+  );
+  const updateRules = useGardenStore((state) => state.updateRules);
+
   const [rules, setRules] = useState<MaintenanceRules>(DEFAULT_MAINTENANCE_RULES);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setRules({
-          ...DEFAULT_MAINTENANCE_RULES,
-          ...parsed,
-          urgencyThresholds: {
-            ...DEFAULT_MAINTENANCE_RULES.urgencyThresholds,
-            ...parsed.urgencyThresholds,
-          },
-        });
-      } catch {
-        setRules(DEFAULT_MAINTENANCE_RULES);
-      }
+    if (gardenData) {
+      setRules({
+        ...DEFAULT_MAINTENANCE_RULES,
+        ...gardenData.rules,
+        urgencyThresholds: {
+          ...DEFAULT_MAINTENANCE_RULES.urgencyThresholds,
+          ...gardenData.rules?.urgencyThresholds,
+        },
+      });
+      setIsLoading(false);
+    } else {
+      setRules(DEFAULT_MAINTENANCE_RULES);
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, []);
+  }, [gardenData]);
 
   useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
+    if (currentGardenId && !isLoading) {
+      updateRules(currentGardenId, rules);
     }
-  }, [rules, isLoading]);
+  }, [rules, currentGardenId, isLoading, updateRules]);
 
-  const updateRules = useCallback((newRules: Partial<MaintenanceRules>) => {
-    setRules(prev => ({
+  const updateRulesLocal = useCallback((newRules: Partial<MaintenanceRules>) => {
+    setRules((prev) => ({
       ...prev,
       ...newRules,
       urgencyThresholds: {
@@ -60,7 +62,7 @@ export const useMaintenanceRules = () => {
   return {
     rules,
     isLoading,
-    updateRules,
+    updateRules: updateRulesLocal,
     resetToDefault,
   };
 };

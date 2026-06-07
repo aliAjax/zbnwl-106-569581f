@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Plot, PlotHistoryEntry } from '../types/plot';
-
-const HISTORY_STORAGE_KEY = 'community-garden-plot-history';
+import { useGardenStore } from '../store/useGardenStore';
 
 const HISTORY_FIELDS: (keyof Plot)[] = [
   'owner',
@@ -73,36 +72,35 @@ const filterPlotHistoryFields = (plot: Partial<Plot>): Partial<Plot> => {
 };
 
 export const usePlotHistory = () => {
+  const currentGardenId = useGardenStore((state) => state.currentGardenId);
+  const gardenData = useGardenStore((state) =>
+    state.currentGardenId ? state.gardenData[state.currentGardenId] : null
+  );
+  const updateHistory = useGardenStore((state) => state.updateHistory);
+
   const [history, setHistory] = useState<PlotHistoryEntry[]>([]);
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const migrated = parsed.map((entry) => {
-            if (entry.before === undefined) entry.before = {};
-            if (entry.after === undefined) entry.after = {};
-            return entry;
-          });
-          setHistory(migrated);
-        } else {
-          setHistory([]);
-        }
-      } catch {
-        setHistory([]);
-      }
+    if (gardenData) {
+      const migrated = (gardenData.history || []).map((entry) => ({
+        ...entry,
+        before: entry.before ?? {},
+        after: entry.after ?? {},
+      }));
+      setHistory(migrated);
+      setIsHistoryLoaded(true);
+    } else {
+      setHistory([]);
+      setIsHistoryLoaded(true);
     }
-    setIsHistoryLoaded(true);
-  }, []);
+  }, [gardenData]);
 
   useEffect(() => {
-    if (isHistoryLoaded) {
-      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+    if (currentGardenId && isHistoryLoaded) {
+      updateHistory(currentGardenId, history);
     }
-  }, [history, isHistoryLoaded]);
+  }, [history, currentGardenId, isHistoryLoaded, updateHistory]);
 
   const addHistoryEntry = useCallback(
     (

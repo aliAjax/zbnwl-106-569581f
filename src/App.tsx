@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Menu, Sprout, Upload, LayoutGrid, Calendar, LayoutDashboard, Settings, MapPin } from 'lucide-react';
 import { PlotGrid } from './components/PlotGrid';
 import { EditModal } from './components/EditModal';
@@ -10,16 +10,46 @@ import { MaintenanceCalendar } from './components/MaintenanceCalendar';
 import { Dashboard } from './components/Dashboard';
 import { RulesConfigModal } from './components/RulesConfigModal';
 import { PatrolMode } from './components/PatrolMode';
+import { GardenList } from './components/GardenList';
+import { GardenSwitcher } from './components/GardenSwitcher';
 import { usePlots } from './hooks/usePlots';
 import { useMaintenanceRules } from './hooks/useMaintenanceRules';
 import { usePatrolMode } from './hooks/usePatrolMode';
+import { useGardenStore } from './store/useGardenStore';
 import type { Plot, FilterType } from './types/plot';
 
 type ViewType = 'dashboard' | 'grid' | 'calendar';
+type PageType = 'garden-detail' | 'garden-list';
 
 export default function App() {
+  const initialize = useGardenStore((state) => state.initialize);
+  const setCurrentGarden = useGardenStore((state) => state.setCurrentGarden);
+  const isStoreLoading = useGardenStore((state) => state.isLoading);
+  const gardens = useGardenStore((state) => state.gardens);
+  const currentGardenId = useGardenStore((state) => state.currentGardenId);
+
+  const [currentPage, setCurrentPage] = useState<PageType>('garden-detail');
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
   const { rules, updateRules, resetToDefault, isLoading: rulesLoading } = useMaintenanceRules();
-  const { plots, isLoading, isHistoryLoaded, updatePlot, claimPlot, rollbackPlot, getMaintenanceTasks, getPlotById, getDailyTasks, importPlots, getDashboardStats, getHistoryByPlotId } = usePlots(rules);
+  const {
+    plots,
+    isLoading,
+    isHistoryLoaded,
+    updatePlot,
+    claimPlot,
+    rollbackPlot,
+    getMaintenanceTasks,
+    getPlotById,
+    getDailyTasks,
+    importPlots,
+    getDashboardStats,
+    getHistoryByPlotId,
+  } = usePlots(rules);
+
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
@@ -36,7 +66,9 @@ export default function App() {
     updatePlot,
   });
 
-  const tasksForCurrentPlot = patrol.currentPlot ? patrol.getTasksForPlot(patrol.currentPlot.id) : [];
+  const tasksForCurrentPlot = patrol.currentPlot
+    ? patrol.getTasksForPlot(patrol.currentPlot.id)
+    : [];
   const progressStats = patrol.getProgressStats();
 
   const tasks = useMemo(() => getMaintenanceTasks(), [getMaintenanceTasks]);
@@ -44,24 +76,30 @@ export default function App() {
   const filteredPlots = useMemo(() => {
     switch (currentFilter) {
       case 'available':
-        return plots.filter(p => p.status === 'available');
+        return plots.filter((p) => p.status === 'available');
       case 'claimed':
-        return plots.filter(p => p.status === 'claimed');
+        return plots.filter((p) => p.status === 'claimed');
       case 'needsMaintenance':
-        return plots.filter(p => p.status === 'needsMaintenance');
+        return plots.filter((p) => p.status === 'needsMaintenance');
       default:
         return plots;
     }
   }, [plots, currentFilter]);
 
-  const filterCounts = useMemo(() => ({
-    all: plots.length,
-    available: plots.filter(p => p.status === 'available').length,
-    claimed: plots.filter(p => p.status === 'claimed').length,
-    needsMaintenance: plots.filter(p => p.status === 'needsMaintenance').length,
-  }), [plots]);
+  const filterCounts = useMemo(
+    () => ({
+      all: plots.length,
+      available: plots.filter((p) => p.status === 'available').length,
+      claimed: plots.filter((p) => p.status === 'claimed').length,
+      needsMaintenance: plots.filter((p) => p.status === 'needsMaintenance').length,
+    }),
+    [plots]
+  );
 
-  const dashboardStats = useMemo(() => getDashboardStats(filteredPlots), [getDashboardStats, filteredPlots]);
+  const dashboardStats = useMemo(
+    () => getDashboardStats(filteredPlots),
+    [getDashboardStats, filteredPlots]
+  );
 
   const handlePlotClick = (plot: Plot) => {
     setSelectedPlot(plot);
@@ -73,13 +111,16 @@ export default function App() {
     setIsClaimWizardOpen(true);
   };
 
-  const handleClaimSubmit = (id: string, data: {
-    owner: string;
-    contact: string;
-    plant: string;
-    firstMaintenanceDate: string;
-    notes?: string;
-  }) => {
+  const handleClaimSubmit = (
+    id: string,
+    data: {
+      owner: string;
+      contact: string;
+      plant: string;
+      firstMaintenanceDate: string;
+      notes?: string;
+    }
+  ) => {
     claimPlot(id, data);
   };
 
@@ -100,11 +141,38 @@ export default function App() {
     importPlots(importedPlots);
   };
 
-  const existingPlotNumbers = useMemo(() => plots.map(p => p.plotNumber), [plots]);
+  const existingPlotNumbers = useMemo(() => plots.map((p) => p.plotNumber), [plots]);
 
-  if (isLoading || rulesLoading) {
+  const handleSelectGarden = (gardenId: string) => {
+    setCurrentGarden(gardenId);
+    setCurrentPage('garden-detail');
+    setSelectedPlot(null);
+    setIsModalOpen(false);
+    patrol.exitPatrol();
+  };
+
+  const handleOpenGardenList = () => {
+    setCurrentPage('garden-list');
+  };
+
+  const handleBackToDetail = () => {
+    setCurrentPage('garden-detail');
+  };
+
+  const overallLoading = isLoading || rulesLoading || isStoreLoading;
+
+  if (currentPage === 'garden-list') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <GardenList
+        onSelectGarden={handleSelectGarden}
+        onBack={handleBackToDetail}
+      />
+    );
+  }
+
+  if (overallLoading || !currentGardenId || gardens.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cream">
         <div className="text-center">
           <Sprout className="w-12 h-12 text-garden-500 animate-bounce mx-auto mb-4" />
           <p className="text-garden-600">加载中...</p>
@@ -119,13 +187,7 @@ export default function App() {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-garden-500 rounded-xl flex items-center justify-center">
-                <Sprout className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-serif font-bold text-garden-800">社区菜园</h1>
-                <p className="text-xs text-garden-500 hidden sm:block">地块认领与维护管理</p>
-              </div>
+              <GardenSwitcher onOpenGardenList={handleOpenGardenList} />
             </div>
 
             <button
@@ -235,7 +297,9 @@ export default function App() {
               <>
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm text-garden-600">
-                    共 <span className="font-semibold text-garden-800">{filteredPlots.length}</span> 个地块
+                    共{' '}
+                    <span className="font-semibold text-garden-800">{filteredPlots.length}</span>{' '}
+                    个地块
                   </p>
                   <button
                     onClick={() => setIsImportModalOpen(true)}

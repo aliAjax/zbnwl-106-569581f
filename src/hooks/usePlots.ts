@@ -1,11 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats, MaintenanceRules } from '../types/plot';
-import { mockPlots } from '../data/mockData';
 import { needsWatering, needsWeeding, daysSince, getUrgency, getNextWaterDate, getNextWeedDate, todayStr, daysSince as getDaysSince, isSameDay } from '../utils/dateUtils';
 import { DEFAULT_MAINTENANCE_RULES } from './useMaintenanceRules';
+import { useGardenStore } from '../store/useGardenStore';
 import { usePlotHistory } from './usePlotHistory';
-
-const STORAGE_KEY = 'community-garden-plots';
 
 const HISTORY_FIELDS: (keyof Plot)[] = [
   'owner',
@@ -17,6 +15,12 @@ const HISTORY_FIELDS: (keyof Plot)[] = [
 ];
 
 export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) => {
+  const currentGardenId = useGardenStore((state) => state.currentGardenId);
+  const gardenData = useGardenStore((state) =>
+    state.currentGardenId ? state.gardenData[state.currentGardenId] : null
+  );
+  const updatePlots = useGardenStore((state) => state.updatePlots);
+
   const [plots, setPlots] = useState<Plot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -28,24 +32,20 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
   } = usePlotHistory();
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        setPlots(JSON.parse(saved));
-      } catch {
-        setPlots(mockPlots);
-      }
+    if (gardenData) {
+      setPlots(gardenData.plots);
+      setIsLoading(false);
     } else {
-      setPlots(mockPlots);
+      setPlots([]);
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, []);
+  }, [gardenData]);
 
   useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(plots));
+    if (currentGardenId && !isLoading) {
+      updatePlots(currentGardenId, plots);
     }
-  }, [plots, isLoading]);
+  }, [plots, currentGardenId, isLoading, updatePlots]);
 
   const computeStatus = useCallback((plot: Partial<Plot>): PlotStatus => {
     if (!plot.owner) {
@@ -58,10 +58,12 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
   }, [rules]);
 
   const recalculateAllStatuses = useCallback(() => {
-    setPlots(prev => prev.map(plot => ({
-      ...plot,
-      status: computeStatus(plot),
-    })));
+    setPlots((prev) =>
+      prev.map((plot) => ({
+        ...plot,
+        status: computeStatus(plot),
+      }))
+    );
   }, [computeStatus]);
 
   useEffect(() => {
@@ -71,32 +73,34 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
   }, [rules, isLoading, recalculateAllStatuses]);
 
   const updatePlot = (id: string, updates: Partial<Plot>) => {
-    const currentPlot = plots.find(p => p.id === id);
+    const currentPlot = plots.find((p) => p.id === id);
     if (!currentPlot) return;
 
     const before: Partial<Plot> = {};
-    HISTORY_FIELDS.forEach(field => {
+    HISTORY_FIELDS.forEach((field) => {
       (before as Record<string, unknown>)[field] = currentPlot[field];
     });
 
-    setPlots(prev => prev.map(plot => {
-      if (plot.id !== id) return plot;
+    setPlots((prev) =>
+      prev.map((plot) => {
+        if (plot.id !== id) return plot;
 
-      const updatedPlot = { ...plot, ...updates };
+        const updatedPlot = { ...plot, ...updates };
 
-      if (updates.status !== undefined) {
-        return updatedPlot;
-      }
+        if (updates.status !== undefined) {
+          return updatedPlot;
+        }
 
-      return { ...updatedPlot, status: computeStatus(updatedPlot) };
-    }));
+        return { ...updatedPlot, status: computeStatus(updatedPlot) };
+      })
+    );
 
     setTimeout(() => {
-      setPlots(prev => {
-        const updatedPlot = prev.find(p => p.id === id);
+      setPlots((prev) => {
+        const updatedPlot = prev.find((p) => p.id === id);
         if (updatedPlot) {
           const after: Partial<Plot> = {};
-          HISTORY_FIELDS.forEach(field => {
+          HISTORY_FIELDS.forEach((field) => {
             (after as Record<string, unknown>)[field] = updatedPlot[field];
           });
           addHistoryEntry(id, 'update', before, after);
@@ -110,11 +114,11 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
     const entry = getHistoryEntryById(historyEntryId);
     if (!entry) return false;
 
-    const currentPlot = plots.find(p => p.id === plotId);
+    const currentPlot = plots.find((p) => p.id === plotId);
     if (!currentPlot) return false;
 
     const beforeRollback: Partial<Plot> = {};
-    HISTORY_FIELDS.forEach(field => {
+    HISTORY_FIELDS.forEach((field) => {
       (beforeRollback as Record<string, unknown>)[field] = currentPlot[field];
     });
 
@@ -124,17 +128,19 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
       rollbackData.status = computeStatus(rollbackData);
     }
 
-    setPlots(prev => prev.map(plot => {
-      if (plot.id !== plotId) return plot;
-      return { ...plot, ...rollbackData };
-    }));
+    setPlots((prev) =>
+      prev.map((plot) => {
+        if (plot.id !== plotId) return plot;
+        return { ...plot, ...rollbackData };
+      })
+    );
 
     setTimeout(() => {
-      setPlots(prev => {
-        const afterRollbackPlot = prev.find(p => p.id === plotId);
+      setPlots((prev) => {
+        const afterRollbackPlot = prev.find((p) => p.id === plotId);
         if (afterRollbackPlot) {
           const afterRollback: Partial<Plot> = {};
-          HISTORY_FIELDS.forEach(field => {
+          HISTORY_FIELDS.forEach((field) => {
             (afterRollback as Record<string, unknown>)[field] = afterRollbackPlot[field];
           });
           addHistoryEntry(
@@ -155,7 +161,7 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
   const getMaintenanceTasks = useCallback((): MaintenanceTask[] => {
     const tasks: MaintenanceTask[] = [];
 
-    plots.forEach(plot => {
+    plots.forEach((plot) => {
       if (!plot.owner) return;
 
       const waterDays = daysSince(plot.lastWatered);
@@ -190,87 +196,95 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
   }, [plots, rules]);
 
   const getPlotById = (id: string) => {
-    return plots.find(p => p.id === id);
+    return plots.find((p) => p.id === id);
   };
 
-  const getDailyTasks = useCallback((dateStr: string): DailyTask[] => {
-    const tasks: DailyTask[] = [];
-    const today = todayStr();
+  const getDailyTasks = useCallback(
+    (dateStr: string): DailyTask[] => {
+      const tasks: DailyTask[] = [];
+      const today = todayStr();
 
-    plots.forEach(plot => {
-      if (!plot.owner) return;
+      plots.forEach((plot) => {
+        if (!plot.owner) return;
 
-      const nextWaterDate = getNextWaterDate(plot.lastWatered, rules);
-      if (nextWaterDate && nextWaterDate <= dateStr) {
-        const daysOverdue = Math.max(0, getDaysSince(plot.lastWatered) - rules.waterOverdueDays);
-        tasks.push({
-          plotId: plot.id,
-          plotNumber: plot.plotNumber,
-          plant: plot.plant,
-          owner: plot.owner,
-          type: 'water',
-          dueDate: nextWaterDate,
-          isOverdue: nextWaterDate < today,
-          daysOverdue,
-        });
-      }
+        const nextWaterDate = getNextWaterDate(plot.lastWatered, rules);
+        if (nextWaterDate && nextWaterDate <= dateStr) {
+          const daysOverdue = Math.max(0, getDaysSince(plot.lastWatered) - rules.waterOverdueDays);
+          tasks.push({
+            plotId: plot.id,
+            plotNumber: plot.plotNumber,
+            plant: plot.plant,
+            owner: plot.owner,
+            type: 'water',
+            dueDate: nextWaterDate,
+            isOverdue: nextWaterDate < today,
+            daysOverdue,
+          });
+        }
 
-      const nextWeedDate = getNextWeedDate(plot.lastWeeded, rules);
-      if (nextWeedDate && nextWeedDate <= dateStr) {
-        const daysOverdue = Math.max(0, getDaysSince(plot.lastWeeded) - rules.weedOverdueDays);
-        tasks.push({
-          plotId: plot.id,
-          plotNumber: plot.plotNumber,
-          plant: plot.plant,
-          owner: plot.owner,
-          type: 'weed',
-          dueDate: nextWeedDate,
-          isOverdue: nextWeedDate < today,
-          daysOverdue,
-        });
-      }
-    });
+        const nextWeedDate = getNextWeedDate(plot.lastWeeded, rules);
+        if (nextWeedDate && nextWeedDate <= dateStr) {
+          const daysOverdue = Math.max(0, getDaysSince(plot.lastWeeded) - rules.weedOverdueDays);
+          tasks.push({
+            plotId: plot.id,
+            plotNumber: plot.plotNumber,
+            plant: plot.plant,
+            owner: plot.owner,
+            type: 'weed',
+            dueDate: nextWeedDate,
+            isOverdue: nextWeedDate < today,
+            daysOverdue,
+          });
+        }
+      });
 
-    return tasks;
-  }, [plots, rules]);
+      return tasks;
+    },
+    [plots, rules]
+  );
 
-  const claimPlot = (id: string, data: {
-    owner: string;
-    contact: string;
-    plant: string;
-    firstMaintenanceDate: string;
-    notes?: string;
-  }) => {
-    const currentPlot = plots.find(p => p.id === id);
+  const claimPlot = (
+    id: string,
+    data: {
+      owner: string;
+      contact: string;
+      plant: string;
+      firstMaintenanceDate: string;
+      notes?: string;
+    }
+  ) => {
+    const currentPlot = plots.find((p) => p.id === id);
     const before: Partial<Plot> = {};
     if (currentPlot) {
-      HISTORY_FIELDS.forEach(field => {
+      HISTORY_FIELDS.forEach((field) => {
         (before as Record<string, unknown>)[field] = currentPlot[field];
       });
     }
 
     const today = todayStr();
-    setPlots(prev => prev.map(plot => {
-      if (plot.id !== id) return plot;
-      return {
-        ...plot,
-        owner: data.owner,
-        contact: data.contact,
-        plant: data.plant,
-        firstMaintenanceDate: data.firstMaintenanceDate,
-        lastWatered: today,
-        lastWeeded: today,
-        status: 'claimed' as PlotStatus,
-        notes: data.notes || plot.notes,
-      };
-    }));
+    setPlots((prev) =>
+      prev.map((plot) => {
+        if (plot.id !== id) return plot;
+        return {
+          ...plot,
+          owner: data.owner,
+          contact: data.contact,
+          plant: data.plant,
+          firstMaintenanceDate: data.firstMaintenanceDate,
+          lastWatered: today,
+          lastWeeded: today,
+          status: 'claimed' as PlotStatus,
+          notes: data.notes || plot.notes,
+        };
+      })
+    );
 
     setTimeout(() => {
-      setPlots(prev => {
-        const updatedPlot = prev.find(p => p.id === id);
+      setPlots((prev) => {
+        const updatedPlot = prev.find((p) => p.id === id);
         if (updatedPlot) {
           const after: Partial<Plot> = {};
-          HISTORY_FIELDS.forEach(field => {
+          HISTORY_FIELDS.forEach((field) => {
             (after as Record<string, unknown>)[field] = updatedPlot[field];
           });
           addHistoryEntry(id, 'claim', before, after, `认领地块：${data.owner}`);
@@ -287,13 +301,13 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
   };
 
   const importPlots = (importedPlots: Partial<Plot>[]) => {
-    setPlots(prev => {
+    setPlots((prev) => {
       const updated = [...prev];
 
-      importedPlots.forEach(imported => {
+      importedPlots.forEach((imported) => {
         if (!imported.plotNumber) return;
 
-        const existingIndex = updated.findIndex(p => p.plotNumber === imported.plotNumber);
+        const existingIndex = updated.findIndex((p) => p.plotNumber === imported.plotNumber);
 
         if (existingIndex >= 0) {
           const existing = updated[existingIndex];
@@ -323,56 +337,59 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
     });
   };
 
-  const getDashboardStats = useCallback((targetPlots?: Plot[]): DashboardStats => {
-    const dataPlots = targetPlots ?? plots;
-    const totalPlots = dataPlots.length;
-    const availablePlots = dataPlots.filter(p => p.status === 'available').length;
-    const needsMaintenancePlots = dataPlots.filter(p => p.status === 'needsMaintenance').length;
+  const getDashboardStats = useCallback(
+    (targetPlots?: Plot[]): DashboardStats => {
+      const dataPlots = targetPlots ?? plots;
+      const totalPlots = dataPlots.length;
+      const availablePlots = dataPlots.filter((p) => p.status === 'available').length;
+      const needsMaintenancePlots = dataPlots.filter((p) => p.status === 'needsMaintenance').length;
 
-    const today = todayStr();
-    const todayTasks = getDailyTasks(today);
-    const targetPlotIds = new Set(dataPlots.map(p => p.id));
-    const todayNewTasks = todayTasks.filter(t => targetPlotIds.has(t.plotId) && isSameDay(t.dueDate, today)).length;
+      const today = todayStr();
+      const todayTasks = getDailyTasks(today);
+      const targetPlotIds = new Set(dataPlots.map((p) => p.id));
+      const todayNewTasks = todayTasks.filter((t) => targetPlotIds.has(t.plotId) && isSameDay(t.dueDate, today)).length;
 
-    const claimedPlots = dataPlots.filter(p => p.owner);
+      const claimedPlots = dataPlots.filter((p) => p.owner);
 
-    let longestUnwateredPlot: DashboardStats['longestUnwateredPlot'] = null;
-    let maxWaterDays = -1;
-    claimedPlots.forEach(plot => {
-      const days = daysSince(plot.lastWatered);
-      if (days !== Infinity && days > maxWaterDays) {
-        maxWaterDays = days;
-        longestUnwateredPlot = {
-          plotNumber: plot.plotNumber,
-          days,
-          plant: plot.plant,
-        };
-      }
-    });
+      let longestUnwateredPlot: DashboardStats['longestUnwateredPlot'] = null;
+      let maxWaterDays = -1;
+      claimedPlots.forEach((plot) => {
+        const days = daysSince(plot.lastWatered);
+        if (days !== Infinity && days > maxWaterDays) {
+          maxWaterDays = days;
+          longestUnwateredPlot = {
+            plotNumber: plot.plotNumber,
+            days,
+            plant: plot.plant,
+          };
+        }
+      });
 
-    let longestUnweededPlot: DashboardStats['longestUnweededPlot'] = null;
-    let maxWeedDays = -1;
-    claimedPlots.forEach(plot => {
-      const days = daysSince(plot.lastWeeded);
-      if (days !== Infinity && days > maxWeedDays) {
-        maxWeedDays = days;
-        longestUnweededPlot = {
-          plotNumber: plot.plotNumber,
-          days,
-          plant: plot.plant,
-        };
-      }
-    });
+      let longestUnweededPlot: DashboardStats['longestUnweededPlot'] = null;
+      let maxWeedDays = -1;
+      claimedPlots.forEach((plot) => {
+        const days = daysSince(plot.lastWeeded);
+        if (days !== Infinity && days > maxWeedDays) {
+          maxWeedDays = days;
+          longestUnweededPlot = {
+            plotNumber: plot.plotNumber,
+            days,
+            plant: plot.plant,
+          };
+        }
+      });
 
-    return {
-      totalPlots,
-      availablePlots,
-      needsMaintenancePlots,
-      todayNewTasks,
-      longestUnwateredPlot,
-      longestUnweededPlot,
-    };
-  }, [plots, getDailyTasks]);
+      return {
+        totalPlots,
+        availablePlots,
+        needsMaintenancePlots,
+        todayNewTasks,
+        longestUnwateredPlot,
+        longestUnweededPlot,
+      };
+    },
+    [plots, getDailyTasks]
+  );
 
   return {
     plots,

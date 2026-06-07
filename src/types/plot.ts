@@ -1,3 +1,20 @@
+export interface Garden {
+  id: string;
+  name: string;
+  description?: string;
+  location?: string;
+  createdAt: string;
+  updatedAt: string;
+  isDefault?: boolean;
+}
+
+export interface GardenData {
+  gardenId: string;
+  plots: Plot[];
+  rules: MaintenanceRules;
+  history: PlotHistoryEntry[];
+}
+
 export interface PlotHistoryEntry {
   id: string;
   plotId: string;
