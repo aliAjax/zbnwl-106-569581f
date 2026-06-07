@@ -1,18 +1,20 @@
 import { useState, useMemo } from 'react';
-import { Menu, Sprout } from 'lucide-react';
+import { Menu, Sprout, Upload } from 'lucide-react';
 import { PlotGrid } from './components/PlotGrid';
 import { EditModal } from './components/EditModal';
 import { TaskPanel } from './components/TaskPanel';
 import { FilterBar } from './components/FilterBar';
+import { ImportModal } from './components/ImportModal';
 import { usePlots } from './hooks/usePlots';
 import type { Plot, FilterType } from './types/plot';
 
 export default function App() {
-  const { plots, isLoading, updatePlot, getMaintenanceTasks, getPlotById } = usePlots();
+  const { plots, isLoading, updatePlot, getMaintenanceTasks, getPlotById, importPlots } = usePlots();
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
   const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const tasks = useMemo(() => getMaintenanceTasks(), [getMaintenanceTasks]);
 
@@ -53,6 +55,12 @@ export default function App() {
   const handleSave = (id: string, updates: Partial<Plot>) => {
     updatePlot(id, updates);
   };
+
+  const handleImport = (importedPlots: Partial<Plot>[]) => {
+    importPlots(importedPlots);
+  };
+
+  const existingPlotNumbers = useMemo(() => plots.map(p => p.plotNumber), [plots]);
 
   if (isLoading) {
     return (
@@ -106,10 +114,17 @@ export default function App() {
               />
             </div>
 
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-garden-600">
                 共 <span className="font-semibold text-garden-800">{filteredPlots.length}</span> 个地块
               </p>
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="px-4 py-2 bg-white border border-garden-200 text-garden-700 rounded-xl hover:bg-garden-50 transition-colors font-medium text-sm flex items-center gap-2 shadow-sm"
+              >
+                <Upload size={16} />
+                批量导入
+              </button>
             </div>
 
             <PlotGrid
@@ -145,6 +160,13 @@ export default function App() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSave}
+      />
+
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImport}
+        existingPlotNumbers={existingPlotNumbers}
       />
     </div>
   );

@@ -92,11 +92,51 @@ export const usePlots = () => {
     return plots.find(p => p.id === id);
   };
 
+  const importPlots = (importedPlots: Partial<Plot>[]) => {
+    setPlots(prev => {
+      const updated = [...prev];
+      let addedCount = 0;
+      let updatedCount = 0;
+
+      importedPlots.forEach(imported => {
+        if (!imported.plotNumber) return;
+
+        const existingIndex = updated.findIndex(p => p.plotNumber === imported.plotNumber);
+
+        if (existingIndex >= 0) {
+          const existing = updated[existingIndex];
+          const merged = { ...existing, ...imported };
+          updated[existingIndex] = {
+            ...merged,
+            status: computeStatus(merged),
+          };
+          updatedCount++;
+        } else {
+          const newPlot: Plot = {
+            id: crypto.randomUUID(),
+            plotNumber: imported.plotNumber!,
+            owner: imported.owner ?? null,
+            plant: imported.plant ?? null,
+            lastWatered: imported.lastWatered ?? null,
+            lastWeeded: imported.lastWeeded ?? null,
+            status: computeStatus(imported),
+            notes: imported.notes,
+          };
+          updated.push(newPlot);
+          addedCount++;
+        }
+      });
+
+      return updated;
+    });
+  };
+
   return {
     plots,
     isLoading,
     updatePlot,
     getMaintenanceTasks,
     getPlotById,
+    importPlots,
   };
 };
