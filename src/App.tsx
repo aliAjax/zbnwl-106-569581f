@@ -25,7 +25,6 @@ export default function App() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const tasks = useMemo(() => getMaintenanceTasks(), [getMaintenanceTasks]);
-  const dashboardStats = useMemo(() => getDashboardStats(), [getDashboardStats]);
 
   const filteredPlots = useMemo(() => {
     switch (currentFilter) {
@@ -46,6 +45,8 @@ export default function App() {
     claimed: plots.filter(p => p.status === 'claimed').length,
     needsMaintenance: plots.filter(p => p.status === 'needsMaintenance').length,
   }), [plots]);
+
+  const dashboardStats = useMemo(() => getDashboardStats(filteredPlots), [getDashboardStats, filteredPlots]);
 
   const handlePlotClick = (plot: Plot) => {
     setSelectedPlot(plot);
@@ -132,7 +133,7 @@ export default function App() {
           <main className="flex-1 min-w-0">
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex-1">
-                {currentView === 'grid' && (
+                {(currentView === 'dashboard' || currentView === 'grid') && (
                   <FilterBar
                     currentFilter={currentFilter}
                     onFilterChange={setCurrentFilter}

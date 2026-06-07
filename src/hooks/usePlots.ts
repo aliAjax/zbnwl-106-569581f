@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats } from '../types/plot';
 import { mockPlots } from '../data/mockData';
-import { needsWatering, needsWeeding, daysSince, getUrgency, getNextWaterDate, getNextWeedDate, todayStr, daysSince as getDaysSince, isSameDay, formatDateISO } from '../utils/dateUtils';
+import { needsWatering, needsWeeding, daysSince, getUrgency, getNextWaterDate, getNextWeedDate, todayStr, daysSince as getDaysSince, isSameDay } from '../utils/dateUtils';
 
 const STORAGE_KEY = 'community-garden-plots';
 
@@ -200,16 +200,18 @@ export const usePlots = () => {
     });
   };
 
-  const getDashboardStats = useCallback((): DashboardStats => {
-    const totalPlots = plots.length;
-    const availablePlots = plots.filter(p => p.status === 'available').length;
-    const needsMaintenancePlots = plots.filter(p => p.status === 'needsMaintenance').length;
+  const getDashboardStats = useCallback((targetPlots?: Plot[]): DashboardStats => {
+    const dataPlots = targetPlots ?? plots;
+    const totalPlots = dataPlots.length;
+    const availablePlots = dataPlots.filter(p => p.status === 'available').length;
+    const needsMaintenancePlots = dataPlots.filter(p => p.status === 'needsMaintenance').length;
 
     const today = todayStr();
     const todayTasks = getDailyTasks(today);
-    const todayNewTasks = todayTasks.filter(t => isSameDay(t.dueDate, today)).length;
+    const targetPlotIds = new Set(dataPlots.map(p => p.id));
+    const todayNewTasks = todayTasks.filter(t => targetPlotIds.has(t.plotId) && isSameDay(t.dueDate, today)).length;
 
-    const claimedPlots = plots.filter(p => p.owner);
+    const claimedPlots = dataPlots.filter(p => p.owner);
 
     let longestUnwateredPlot: DashboardStats['longestUnwateredPlot'] = null;
     let maxWaterDays = -1;
