@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Plot, PlotStatus, MaintenanceTask } from '../types/plot';
 import { mockPlots } from '../data/mockData';
 import { needsWatering, needsWeeding, daysSince, getUrgency } from '../utils/dateUtils';
@@ -32,9 +32,13 @@ export const usePlots = () => {
   const updatePlot = (id: string, updates: Partial<Plot>) => {
     setPlots(prev => prev.map(plot => {
       if (plot.id === id) {
-        let newStatus: PlotStatus = plot.status;
         const updatedPlot = { ...plot, ...updates };
         
+        if (updates.status !== undefined) {
+          return updatedPlot;
+        }
+        
+        let newStatus: PlotStatus = plot.status;
         if (!updatedPlot.owner) {
           newStatus = 'available';
         } else if (needsWatering(updatedPlot.lastWatered) || needsWeeding(updatedPlot.lastWeeded)) {
@@ -49,7 +53,7 @@ export const usePlots = () => {
     }));
   };
 
-  const getMaintenanceTasks = (): MaintenanceTask[] => {
+  const getMaintenanceTasks = useCallback((): MaintenanceTask[] => {
     const tasks: MaintenanceTask[] = [];
     
     plots.forEach(plot => {
@@ -82,7 +86,7 @@ export const usePlots = () => {
       const urgencyOrder = { high: 0, medium: 1, low: 2 };
       return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
     });
-  };
+  }, [plots]);
 
   const getPlotById = (id: string) => {
     return plots.find(p => p.id === id);

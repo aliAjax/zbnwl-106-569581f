@@ -14,7 +14,7 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
 
-  const tasks = useMemo(() => getMaintenanceTasks(), [plots, getMaintenanceTasks]);
+  const tasks = useMemo(() => getMaintenanceTasks(), [getMaintenanceTasks]);
 
   const filteredPlots = useMemo(() => {
     switch (currentFilter) {

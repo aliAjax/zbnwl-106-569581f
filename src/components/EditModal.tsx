@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Droplets, Leaf, User, Sprout, Calendar, StickyNote, Save } from 'lucide-react';
+import { X, Droplets, Leaf, User, Sprout, StickyNote, Save, Flag } from 'lucide-react';
 import type { Plot, PlotStatus } from '../types/plot';
 import { todayStr } from '../utils/dateUtils';
 
@@ -42,10 +42,17 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
       plant: formData.plant || null,
       lastWatered: formData.lastWatered || null,
       lastWeeded: formData.lastWeeded || null,
+      status: formData.status,
       notes: formData.notes || undefined,
     });
     onClose();
   };
+
+  const statusOptions: { value: PlotStatus; label: string; color: string }[] = [
+    { value: 'available', label: '待认领', color: 'bg-soil-100 text-soil-700 border-soil-300' },
+    { value: 'claimed', label: '已认领', color: 'bg-garden-100 text-garden-700 border-garden-300' },
+    { value: 'needsMaintenance', label: '需维护', color: 'bg-amber-100 text-amber-700 border-amber-300' },
+  ];
 
   const handleWaterToday = () => {
     setFormData(prev => ({ ...prev, lastWatered: todayStr() }));
@@ -145,6 +152,31 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
               >
                 今天
               </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-garden-700 mb-2">
+              <Flag size={16} />
+              地块状态
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {statusOptions.map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, status: option.value }))}
+                  className={`
+                    px-2 py-2.5 rounded-xl border-2 text-sm font-medium transition-all
+                    ${formData.status === option.value
+                      ? `${option.color} border-current shadow-sm`
+                      : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                    }
+                  `}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
 
