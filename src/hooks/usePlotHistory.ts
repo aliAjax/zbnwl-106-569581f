@@ -117,7 +117,7 @@ export const usePlotHistory = () => {
       before: Partial<Plot>,
       after: Partial<Plot>,
       customDescription?: string
-    ) => {
+    ): PlotHistoryEntry | null => {
       const beforeFiltered = filterPlotHistoryFields(before);
       const afterFiltered = filterPlotHistoryFields(after);
 
@@ -126,7 +126,7 @@ export const usePlotHistory = () => {
       );
 
       if (!hasChanges && action === 'update') {
-        return;
+        return null;
       }
 
       const description =
@@ -144,20 +144,20 @@ export const usePlotHistory = () => {
       };
 
       setHistory((prev) => [...prev, entry]);
+      return entry;
     },
     []
   );
 
   const addHistoryEntries = useCallback(
     (entries: PlotHistoryEntry[]) => {
-      const existingIds = new Set(history.map((e) => e.id));
-      const newEntries = entries.filter((e) => !existingIds.has(e.id));
-
-      if (newEntries.length > 0) {
-        setHistory((prev) => [...prev, ...newEntries]);
-      }
+      setHistory((prev) => {
+        const existingIds = new Set(prev.map((e) => e.id));
+        const newEntries = entries.filter((e) => !existingIds.has(e.id));
+        return newEntries.length > 0 ? [...prev, ...newEntries] : prev;
+      });
     },
-    [history]
+    []
   );
 
   const getHistoryByPlotId = useCallback(

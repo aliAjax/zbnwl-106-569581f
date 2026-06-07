@@ -14,6 +14,16 @@ const HISTORY_FIELDS: (keyof Plot)[] = [
   'notes',
 ];
 
+const broadcastHistoryEntry = (
+  entry: PlotHistoryEntry | null,
+  enableSync: boolean,
+  handlers: SyncHandlers
+) => {
+  if (entry && enableSync && handlers.onLocalHistoryAdd) {
+    handlers.onLocalHistoryAdd([entry]);
+  }
+};
+
 interface UsePlotsOptions {
   rules?: MaintenanceRules;
   enableSync?: boolean;
@@ -227,7 +237,8 @@ export const usePlots = (options: UsePlotsOptions = {}) => {
           HISTORY_FIELDS.forEach((field) => {
             (after as Record<string, unknown>)[field] = updatedPlot[field];
           });
-          addHistoryEntry(id, 'update', before, after);
+          const entry = addHistoryEntry(id, 'update', before, after);
+          broadcastHistoryEntry(entry, enableSync, syncHandlersRef.current);
         }
         return prev;
       });
@@ -271,13 +282,14 @@ export const usePlots = (options: UsePlotsOptions = {}) => {
           HISTORY_FIELDS.forEach((field) => {
             (afterRollback as Record<string, unknown>)[field] = afterRollbackPlot[field];
           });
-          addHistoryEntry(
+          const historyEntry = addHistoryEntry(
             plotId,
             'rollback',
             beforeRollback,
             afterRollback,
             `回滚到 ${new Date(entry.timestamp).toLocaleString('zh-CN')} 的版本`
           );
+          broadcastHistoryEntry(historyEntry, enableSync, syncHandlersRef.current);
         }
         return prev;
       });
@@ -419,7 +431,8 @@ export const usePlots = (options: UsePlotsOptions = {}) => {
           HISTORY_FIELDS.forEach((field) => {
             (after as Record<string, unknown>)[field] = updatedPlot[field];
           });
-          addHistoryEntry(id, 'claim', before, after, `认领地块：${data.owner}`);
+          const entry = addHistoryEntry(id, 'claim', before, after, `认领地块：${data.owner}`);
+          broadcastHistoryEntry(entry, enableSync, syncHandlersRef.current);
         }
         return prev;
       });

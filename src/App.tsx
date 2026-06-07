@@ -89,6 +89,7 @@ export default function App() {
     sendPlotUpdate,
     sendPlotClaim,
     sendPlotRollback,
+    sendHistoryAdd,
     resolveConflict,
   } = useCollaborationSync({
     gardenId: currentGardenId,
@@ -123,8 +124,9 @@ export default function App() {
       onLocalPlotUpdate: sendPlotUpdate,
       onLocalPlotClaim: sendPlotClaim,
       onLocalPlotRollback: sendPlotRollback,
+      onLocalHistoryAdd: sendHistoryAdd,
     });
-  }, [setSyncHandlers, sendPlotUpdate, sendPlotClaim, sendPlotRollback]);
+  }, [setSyncHandlers, sendPlotUpdate, sendPlotClaim, sendPlotRollback, sendHistoryAdd]);
 
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
