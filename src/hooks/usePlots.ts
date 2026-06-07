@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats, MaintenanceRules } from '../types/plot';
+import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats, MaintenanceRules, PlotHistoryEntry } from '../types/plot';
 import { needsWatering, needsWeeding, daysSince, getUrgency, getNextWaterDate, getNextWeedDate, todayStr, daysSince as getDaysSince, isSameDay } from '../utils/dateUtils';
 import { DEFAULT_MAINTENANCE_RULES } from './useMaintenanceRules';
 import { useGardenStore } from '../store/useGardenStore';
@@ -14,7 +14,27 @@ const HISTORY_FIELDS: (keyof Plot)[] = [
   'notes',
 ];
 
-export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) => {
+interface UsePlotsOptions {
+  rules?: MaintenanceRules;
+  enableSync?: boolean;
+}
+
+interface SyncHandlers {
+  onLocalPlotUpdate?: (plotId: string, updates: Partial<Plot>) => void;
+  onLocalPlotClaim?: (plotId: string, claimData: {
+    owner: string;
+    contact: string;
+    plant: string;
+    firstMaintenanceDate: string;
+    notes?: string;
+  }) => void;
+  onLocalPlotRollback?: (plotId: string, historyEntryId: string, rollbackData: Partial<Plot>) => void;
+  onLocalHistoryAdd?: (entries: PlotHistoryEntry[]) => void;
+}
+
+export const usePlots = (options: UsePlotsOptions = {}) => {
+  const { rules = DEFAULT_MAINTENANCE_RULES, enableSync = false } = options;
+
   const currentGardenId = useGardenStore((state) => state.currentGardenId);
   const gardenData = useGardenStore((state) =>
     state.currentGardenId ? state.gardenData[state.currentGardenId] : null
@@ -25,13 +45,20 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
   const [isLoading, setIsLoading] = useState(true);
   const lastSyncedGardenIdRef = useRef<string | null>(null);
   const isInitialLoadRef = useRef(true);
+  const isApplyingRemoteUpdateRef = useRef(false);
+  const syncHandlersRef = useRef<SyncHandlers>({});
 
   const {
     addHistoryEntry,
     getHistoryByPlotId,
     getHistoryEntryById,
     isHistoryLoaded,
+    addHistoryEntries,
   } = usePlotHistory();
+
+  const setSyncHandlers = useCallback((handlers: SyncHandlers) => {
+    syncHandlersRef.current = handlers;
+  }, []);
 
   useEffect(() => {
     if (gardenData && currentGardenId) {
@@ -80,7 +107,93 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
     }
   }, [rules, isLoading, recalculateAllStatuses]);
 
-  const updatePlot = (id: string, updates: Partial<Plot>) => {
+  const applyRemotePlotUpdate = useCallback((plotId: string, updates: Partial<Plot>) => {
+    isApplyingRemoteUpdateRef.current = true;
+    try {
+      setPlots((prev) =>
+        prev.map((plot) => {
+          if (plot.id !== plotId) return plot;
+          const updatedPlot = { ...plot, ...updates };
+          if (updates.status !== undefined) {
+            return updatedPlot;
+          }
+          return { ...updatedPlot, status: computeStatus(updatedPlot) };
+        })
+      );
+    } finally {
+      isApplyingRemoteUpdateRef.current = false;
+    }
+  }, [computeStatus]);
+
+  const applyRemotePlotClaim = useCallback((
+    plotId: string,
+    claimData: {
+      owner: string;
+      contact: string;
+      plant: string;
+      firstMaintenanceDate: string;
+      notes?: string;
+    }
+  ) => {
+    isApplyingRemoteUpdateRef.current = true;
+    try {
+      const today = todayStr();
+      setPlots((prev) =>
+        prev.map((plot) => {
+          if (plot.id !== plotId) return plot;
+          return {
+            ...plot,
+            owner: claimData.owner,
+            contact: claimData.contact,
+            plant: claimData.plant,
+            firstMaintenanceDate: claimData.firstMaintenanceDate,
+            lastWatered: today,
+            lastWeeded: today,
+            status: 'claimed' as PlotStatus,
+            notes: claimData.notes || plot.notes,
+          };
+        })
+      );
+    } finally {
+      isApplyingRemoteUpdateRef.current = false;
+    }
+  }, []);
+
+  const applyRemotePlotRollback = useCallback((
+    plotId: string,
+    historyEntryId: string,
+    rollbackData: Partial<Plot>
+  ) => {
+    isApplyingRemoteUpdateRef.current = true;
+    try {
+      setPlots((prev) =>
+        prev.map((plot) => {
+          if (plot.id !== plotId) return plot;
+          const rollbackResult: Partial<Plot> = { ...rollbackData };
+          if (rollbackResult.status === undefined) {
+            rollbackResult.status = computeStatus(rollbackResult);
+          }
+          return { ...plot, ...rollbackResult };
+        })
+      );
+    } finally {
+      isApplyingRemoteUpdateRef.current = false;
+    }
+  }, [computeStatus]);
+
+  const applyRemotePlotsBatchUpdate = useCallback((newPlots: Plot[]) => {
+    isApplyingRemoteUpdateRef.current = true;
+    try {
+      setPlots(newPlots.map((plot) => ({
+        ...plot,
+        status: computeStatus(plot),
+      })));
+    } finally {
+      isApplyingRemoteUpdateRef.current = false;
+    }
+  }, [computeStatus]);
+
+  const updatePlot = useCallback((id: string, updates: Partial<Plot>) => {
     const currentPlot = plots.find((p) => p.id === id);
     if (!currentPlot) return;
 
@@ -103,6 +216,10 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
       })
     );
 
+    if (enableSync && syncHandlersRef.current.onLocalPlotUpdate) {
+      syncHandlersRef.current.onLocalPlotUpdate(id, updates);
+    }
+
     setTimeout(() => {
       setPlots((prev) => {
         const updatedPlot = prev.find((p) => p.id === id);
@@ -116,9 +233,9 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
         return prev;
       });
     }, 0);
-  };
+  }, [plots, computeStatus, enableSync, addHistoryEntry]);
 
-  const rollbackPlot = (plotId: string, historyEntryId: string): boolean => {
+  const rollbackPlot = useCallback((plotId: string, historyEntryId: string): boolean => {
     const entry = getHistoryEntryById(historyEntryId);
     if (!entry) return false;
 
@@ -143,6 +260,10 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
       })
     );
 
+    if (enableSync && syncHandlersRef.current.onLocalPlotRollback) {
+      syncHandlersRef.current.onLocalPlotRollback(plotId, historyEntryId, rollbackData);
+    }
+
     setTimeout(() => {
       setPlots((prev) => {
         const afterRollbackPlot = prev.find((p) => p.id === plotId);
@@ -164,7 +285,7 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
     }, 0);
 
     return true;
-  };
+  }, [plots, getHistoryEntryById, computeStatus, enableSync, addHistoryEntry]);
 
   const getMaintenanceTasks = useCallback((): MaintenanceTask[] => {
     const tasks: MaintenanceTask[] = [];
@@ -203,9 +324,9 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
     });
   }, [plots, rules]);
 
-  const getPlotById = (id: string) => {
+  const getPlotById = useCallback((id: string) => {
     return plots.find((p) => p.id === id);
-  };
+  }, [plots]);
 
   const getDailyTasks = useCallback(
     (dateStr: string): DailyTask[] => {
@@ -251,7 +372,7 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
     [plots, rules]
   );
 
-  const claimPlot = (
+  const claimPlot = useCallback((
     id: string,
     data: {
       owner: string;
@@ -287,6 +408,10 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
       })
     );
 
+    if (enableSync && syncHandlersRef.current.onLocalPlotClaim) {
+      syncHandlersRef.current.onLocalPlotClaim(id, data);
+    }
+
     setTimeout(() => {
       setPlots((prev) => {
         const updatedPlot = prev.find((p) => p.id === id);
@@ -306,9 +431,9 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
     } catch (e) {
       console.warn('Failed to save contact to localStorage:', e);
     }
-  };
+  }, [plots, enableSync, addHistoryEntry]);
 
-  const importPlots = (importedPlots: Partial<Plot>[]) => {
+  const importPlots = useCallback((importedPlots: Partial<Plot>[]) => {
     setPlots((prev) => {
       const updated = [...prev];
 
@@ -343,7 +468,7 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
 
       return updated;
     });
-  };
+  }, [computeStatus]);
 
   const getDashboardStats = useCallback(
     (targetPlots?: Plot[]): DashboardStats => {
@@ -412,5 +537,10 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
     importPlots,
     getDashboardStats,
     getHistoryByPlotId,
+    setSyncHandlers,
+    applyRemotePlotUpdate,
+    applyRemotePlotClaim,
+    applyRemotePlotRollback,
+    applyRemotePlotsBatchUpdate,
   };
 };

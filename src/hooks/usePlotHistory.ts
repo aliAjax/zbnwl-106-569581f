@@ -148,6 +148,18 @@ export const usePlotHistory = () => {
     []
   );
 
+  const addHistoryEntries = useCallback(
+    (entries: PlotHistoryEntry[]) => {
+      const existingIds = new Set(history.map((e) => e.id));
+      const newEntries = entries.filter((e) => !existingIds.has(e.id));
+
+      if (newEntries.length > 0) {
+        setHistory((prev) => [...prev, ...newEntries]);
+      }
+    },
+    [history]
+  );
+
   const getHistoryByPlotId = useCallback(
     (plotId: string): PlotHistoryEntry[] => {
       return history
@@ -179,6 +191,7 @@ export const usePlotHistory = () => {
     history,
     isHistoryLoaded,
     addHistoryEntry,
+    addHistoryEntries,
     getHistoryByPlotId,
     getHistoryEntryById,
     deleteHistoryByPlotId,

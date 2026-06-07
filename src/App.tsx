@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Menu, Sprout, Upload, LayoutGrid, Calendar, LayoutDashboard, Settings, MapPin } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { Menu, Sprout, Upload, LayoutGrid, Calendar, LayoutDashboard, Settings, MapPin, Wifi, WifiOff } from 'lucide-react';
 import { PlotGrid } from './components/PlotGrid';
 import { EditModal } from './components/EditModal';
 import { ClaimWizard } from './components/ClaimWizard';
@@ -12,11 +12,15 @@ import { RulesConfigModal } from './components/RulesConfigModal';
 import { PatrolMode } from './components/PatrolMode';
 import { GardenList } from './components/GardenList';
 import { GardenSwitcher } from './components/GardenSwitcher';
+import { ConflictResolverModal } from './components/ConflictResolverModal';
 import { usePlots } from './hooks/usePlots';
 import { useMaintenanceRules } from './hooks/useMaintenanceRules';
 import { usePatrolMode } from './hooks/usePatrolMode';
 import { useGardenStore } from './store/useGardenStore';
-import type { Plot, FilterType } from './types/plot';
+import { useCollaborationSync } from './hooks/useCollaborationSync';
+import { usePlotHistory } from './hooks/usePlotHistory';
+import type { Plot, FilterType, PlotHistoryEntry, MaintenanceRules } from './types/plot';
+import type { ConflictInfo } from './types/collaboration';
 
 type ViewType = 'dashboard' | 'grid' | 'calendar';
 type PageType = 'garden-detail' | 'garden-list';
@@ -35,6 +39,7 @@ export default function App() {
   }, [initialize]);
 
   const { rules, updateRules, resetToDefault, isLoading: rulesLoading } = useMaintenanceRules();
+  const { addHistoryEntries } = usePlotHistory();
   const {
     plots,
     isLoading,
@@ -48,7 +53,81 @@ export default function App() {
     importPlots,
     getDashboardStats,
     getHistoryByPlotId,
-  } = usePlots(rules);
+    setSyncHandlers,
+    applyRemotePlotUpdate,
+    applyRemotePlotClaim,
+    applyRemotePlotRollback,
+    applyRemotePlotsBatchUpdate,
+  } = usePlots({ rules, enableSync: true });
+
+  const [currentConflict, setCurrentConflict] = useState<ConflictInfo | null>(null);
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
+  const conflictQueueRef = useRef<ConflictInfo[]>([]);
+
+  const handleConflictDetected = useCallback((conflict: ConflictInfo) => {
+    if (currentConflict) {
+      conflictQueueRef.current.push(conflict);
+    } else {
+      setCurrentConflict(conflict);
+      setIsConflictModalOpen(true);
+    }
+  }, [currentConflict]);
+
+  const processNextConflict = useCallback(() => {
+    if (conflictQueueRef.current.length > 0) {
+      const next = conflictQueueRef.current.shift()!;
+      setCurrentConflict(next);
+      setIsConflictModalOpen(true);
+    } else {
+      setCurrentConflict(null);
+      setIsConflictModalOpen(false);
+    }
+  }, []);
+
+  const handleResolveConflict = useCallback(
+    (conflict: ConflictInfo, choice: 'local' | 'remote' | 'merge') => {
+      resolveConflict(conflict, choice);
+      processNextConflict();
+    },
+    [processNextConflict]
+  );
+
+  const handleCloseConflict = useCallback(() => {
+    processNextConflict();
+  }, [processNextConflict]);
+
+  const {
+    syncState,
+    sendPlotUpdate,
+    sendPlotClaim,
+    sendPlotRollback,
+    sendPlotsBatchUpdate,
+    sendHistoryAdd,
+    sendRulesUpdate,
+    resolveConflict,
+  } = useCollaborationSync({
+    gardenId: currentGardenId,
+    getCurrentPlot: getPlotById,
+    onRemotePlotUpdate: applyRemotePlotUpdate,
+    onRemotePlotClaim: applyRemotePlotClaim,
+    onRemotePlotRollback: applyRemotePlotRollback,
+    onRemotePlotsBatchUpdate: applyRemotePlotsBatchUpdate,
+    onRemoteHistoryAdd: (entries: PlotHistoryEntry[]) => {
+      addHistoryEntries(entries);
+    },
+    onRemoteRulesUpdate: (newRules: MaintenanceRules) => {
+      updateRules(newRules);
+    },
+    onConflictDetected: handleConflictDetected,
+  });
+
+  useEffect(() => {
+    setSyncHandlers({
+      onLocalPlotUpdate: sendPlotUpdate,
+      onLocalPlotClaim: sendPlotClaim,
+      onLocalPlotRollback: sendPlotRollback,
+    });
+  }, [setSyncHandlers, sendPlotUpdate, sendPlotClaim, sendPlotRollback]);
 
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
@@ -403,6 +482,41 @@ export default function App() {
         onSkip={patrol.skipCurrent}
         onReset={patrol.resetProgress}
       />
+
+      <ConflictResolverModal
+        conflict={currentConflict}
+        isOpen={isConflictModalOpen}
+        onResolve={handleResolveConflict}
+        onClose={handleCloseConflict}
+      />
+
+      {currentGardenId && (
+        <div className="fixed bottom-4 right-4 z-40">
+          <div
+            className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium shadow-md ${
+              syncState.isConnected
+                ? 'bg-garden-100 text-garden-700 border border-garden-200'
+                : 'bg-gray-100 text-gray-600 border border-gray-200'
+            }`}
+          >
+            {syncState.isConnected ? (
+              <Wifi size={14} className="text-garden-600" />
+            ) : (
+              <WifiOff size={14} className="text-gray-500" />
+            )}
+            <span>
+              {syncState.isConnected
+                ? `同步中 (${syncState.otherClients.length + 1} 个标签页)`
+                : '同步离线'}
+            </span>
+            {syncState.pendingConflicts.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-warning text-white rounded-full text-[10px]">
+                {syncState.pendingConflicts.length} 冲突
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
