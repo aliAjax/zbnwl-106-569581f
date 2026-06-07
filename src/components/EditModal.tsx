@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Droplets, Leaf, User, Sprout, StickyNote, Save, Flag } from 'lucide-react';
+import { X, Droplets, Leaf, User, Sprout, StickyNote, Save, Flag, Info } from 'lucide-react';
 import type { Plot, PlotStatus } from '../types/plot';
 import { todayStr } from '../utils/dateUtils';
 
@@ -10,15 +10,23 @@ interface EditModalProps {
   onSave: (id: string, updates: Partial<Plot>) => void;
 }
 
+const STATUS_OPTIONS: { value: PlotStatus; label: string; color: string }[] = [
+  { value: 'available', label: '待认领', color: 'bg-soil-100 text-soil-700 border-soil-300' },
+  { value: 'claimed', label: '已认领', color: 'bg-garden-100 text-garden-700 border-garden-300' },
+  { value: 'needsMaintenance', label: '需维护', color: 'bg-amber-100 text-amber-700 border-amber-300' },
+];
+
+const INITIAL_FORM_DATA = {
+  owner: '',
+  plant: '',
+  lastWatered: '',
+  lastWeeded: '',
+  status: 'available' as PlotStatus,
+  notes: '',
+};
+
 export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => {
-  const [formData, setFormData] = useState({
-    owner: '',
-    plant: '',
-    lastWatered: '',
-    lastWeeded: '',
-    status: 'available' as PlotStatus,
-    notes: '',
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   useEffect(() => {
     if (plot) {
@@ -47,12 +55,6 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
     });
     onClose();
   };
-
-  const statusOptions: { value: PlotStatus; label: string; color: string }[] = [
-    { value: 'available', label: '待认领', color: 'bg-soil-100 text-soil-700 border-soil-300' },
-    { value: 'claimed', label: '已认领', color: 'bg-garden-100 text-garden-700 border-garden-300' },
-    { value: 'needsMaintenance', label: '需维护', color: 'bg-amber-100 text-amber-700 border-amber-300' },
-  ];
 
   const handleWaterToday = () => {
     setFormData(prev => ({ ...prev, lastWatered: todayStr() }));
@@ -160,8 +162,8 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
               <Flag size={16} />
               地块状态
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {statusOptions.map(option => (
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              {STATUS_OPTIONS.map(option => (
                 <button
                   key={option.value}
                   type="button"
@@ -178,6 +180,10 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
                 </button>
               ))}
             </div>
+            <p className="flex items-start gap-1.5 text-xs text-garden-500">
+              <Info size={12} className="mt-0.5 flex-shrink-0" />
+              <span>更新浇水/除草日期或认领人后，状态将自动刷新</span>
+            </p>
           </div>
 
           <div>

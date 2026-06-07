@@ -4,15 +4,10 @@ import type { FilterType } from '../types/plot';
 interface FilterBarProps {
   currentFilter: FilterType;
   onFilterChange: (filter: FilterType) => void;
-  counts: {
-    all: number;
-    available: number;
-    claimed: number;
-    needsMaintenance: number;
-  };
+  counts: Record<FilterType, number>;
 }
 
-const filterOptions: { value: FilterType; label: string }[] = [
+const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
   { value: 'all', label: '全部' },
   { value: 'available', label: '待认领' },
   { value: 'claimed', label: '已认领' },
@@ -28,7 +23,7 @@ export const FilterBar = ({ currentFilter, onFilterChange, counts }: FilterBarPr
       </div>
       
       <div className="flex flex-wrap gap-2">
-        {filterOptions.map(option => (
+        {FILTER_OPTIONS.map(option => (
           <button
             key={option.value}
             onClick={() => onFilterChange(option.value)}

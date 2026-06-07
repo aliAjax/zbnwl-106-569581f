@@ -8,7 +8,11 @@ interface TaskPanelProps {
   onTaskClick: (plotId: string) => void;
 }
 
-const urgencyConfig = {
+const URGENCY_CONFIG: Record<MaintenanceTask['urgency'], {
+  label: string;
+  color: string;
+  bg: string;
+}> = {
   low: {
     label: '普通',
     color: 'text-garden-600',
@@ -116,7 +120,7 @@ export const TaskPanel = ({ tasks, isOpen, onClose, onTaskClick }: TaskPanelProp
 };
 
 const TaskItem = ({ task, onClick }: { task: MaintenanceTask; onClick: () => void }) => {
-  const config = urgencyConfig[task.urgency];
+  const config = URGENCY_CONFIG[task.urgency];
   
   return (
     <button

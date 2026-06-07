@@ -29,25 +29,35 @@ export const usePlots = () => {
     }
   }, [plots, isLoading]);
 
+  const computeStatus = (plot: Partial<Plot>): PlotStatus => {
+    if (!plot.owner) {
+      return 'available';
+    }
+    if (needsWatering(plot.lastWatered ?? null) || needsWeeding(plot.lastWeeded ?? null)) {
+      return 'needsMaintenance';
+    }
+    return 'claimed';
+  };
+
   const updatePlot = (id: string, updates: Partial<Plot>) => {
     setPlots(prev => prev.map(plot => {
       if (plot.id === id) {
         const updatedPlot = { ...plot, ...updates };
         
+        const isMaintenanceUpdated = 
+          updates.lastWatered !== undefined || 
+          updates.lastWeeded !== undefined ||
+          updates.owner !== undefined;
+        
+        if (isMaintenanceUpdated) {
+          return { ...updatedPlot, status: computeStatus(updatedPlot) };
+        }
+        
         if (updates.status !== undefined) {
           return updatedPlot;
         }
         
-        let newStatus: PlotStatus = plot.status;
-        if (!updatedPlot.owner) {
-          newStatus = 'available';
-        } else if (needsWatering(updatedPlot.lastWatered) || needsWeeding(updatedPlot.lastWeeded)) {
-          newStatus = 'needsMaintenance';
-        } else {
-          newStatus = 'claimed';
-        }
-        
-        return { ...updatedPlot, status: newStatus };
+        return { ...updatedPlot, status: computeStatus(updatedPlot) };
       }
       return plot;
     }));

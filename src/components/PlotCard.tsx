@@ -1,5 +1,5 @@
 import { Droplets, Leaf, User, Info } from 'lucide-react';
-import type { Plot } from '../types/plot';
+import type { Plot, PlotStatus } from '../types/plot';
 import { formatDate, needsWatering, needsWeeding } from '../utils/dateUtils';
 
 interface PlotCardProps {
@@ -8,7 +8,13 @@ interface PlotCardProps {
   index: number;
 }
 
-const statusConfig = {
+const STATUS_CONFIG: Record<PlotStatus, {
+  label: string;
+  bgColor: string;
+  borderColor: string;
+  textColor: string;
+  badgeBg: string;
+}> = {
   available: {
     label: '待认领',
     bgColor: 'bg-soil-100',
@@ -33,7 +39,7 @@ const statusConfig = {
 };
 
 export const PlotCard = ({ plot, onClick, index }: PlotCardProps) => {
-  const config = statusConfig[plot.status];
+  const config = STATUS_CONFIG[plot.status];
   const waterWarning = needsWatering(plot.lastWatered);
   const weedWarning = needsWeeding(plot.lastWeeded);
 
