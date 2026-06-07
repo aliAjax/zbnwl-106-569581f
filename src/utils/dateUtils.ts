@@ -28,7 +28,7 @@ export const getUrgency = (daysOverdue: number): 'low' | 'medium' | 'high' => {
 };
 
 export const todayStr = (): string => {
-  return new Date().toISOString().split('T')[0];
+  return formatDateISO(new Date());
 };
 
 export const addDays = (dateStr: string, days: number): string => {
@@ -81,5 +81,8 @@ export const getMonthDays = (year: number, month: number): Date[] => {
 };
 
 export const formatDateISO = (date: Date): string => {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };

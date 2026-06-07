@@ -125,24 +125,28 @@ export default function App() {
                 <div className="flex bg-white rounded-xl border border-garden-200 p-1">
                   <button
                     onClick={() => setCurrentView('grid')}
+                    aria-label="切换到网格视图"
+                    aria-pressed={currentView === 'grid'}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-all ${
                       currentView === 'grid'
                         ? 'bg-garden-500 text-white shadow-sm'
                         : 'text-garden-600 hover:bg-garden-50'
                     }`}
                   >
-                    <LayoutGrid size={16} />
+                    <LayoutGrid size={16} aria-hidden="true" />
                     <span className="hidden sm:inline">网格</span>
                   </button>
                   <button
                     onClick={() => setCurrentView('calendar')}
+                    aria-label="切换到日历视图"
+                    aria-pressed={currentView === 'calendar'}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-all ${
                       currentView === 'calendar'
                         ? 'bg-garden-500 text-white shadow-sm'
                         : 'text-garden-600 hover:bg-garden-50'
                     }`}
                   >
-                    <Calendar size={16} />
+                    <Calendar size={16} aria-hidden="true" />
                     <span className="hidden sm:inline">日历</span>
                   </button>
                 </div>

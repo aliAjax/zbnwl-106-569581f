@@ -56,9 +56,10 @@ export const MaintenanceCalendar = ({ getDailyTasks, onTaskClick }: MaintenanceC
         <div className="p-4 border-b border-garden-100 flex items-center justify-between bg-cream/50">
           <button
             onClick={goToPrevMonth}
+            aria-label="上一月"
             className="p-2 rounded-xl hover:bg-garden-100 transition-colors"
           >
-            <ChevronLeft size={20} className="text-garden-700" />
+            <ChevronLeft size={20} className="text-garden-700" aria-hidden="true" />
           </button>
 
           <div className="flex items-center gap-3">
@@ -67,6 +68,7 @@ export const MaintenanceCalendar = ({ getDailyTasks, onTaskClick }: MaintenanceC
             </h2>
             <button
               onClick={goToToday}
+              aria-label="回到今天"
               className="px-3 py-1 text-sm bg-garden-100 text-garden-700 rounded-lg hover:bg-garden-200 transition-colors font-medium"
             >
               今天
@@ -75,9 +77,10 @@ export const MaintenanceCalendar = ({ getDailyTasks, onTaskClick }: MaintenanceC
 
           <button
             onClick={goToNextMonth}
+            aria-label="下一月"
             className="p-2 rounded-xl hover:bg-garden-100 transition-colors"
           >
-            <ChevronRight size={20} className="text-garden-700" />
+            <ChevronRight size={20} className="text-garden-700" aria-hidden="true" />
           </button>
         </div>
 
@@ -106,10 +109,15 @@ export const MaintenanceCalendar = ({ getDailyTasks, onTaskClick }: MaintenanceC
             const weedTasks = dayTasks.filter(t => t.type === 'weed');
             const hasOverdue = dayTasks.some(t => t.isOverdue);
 
+            const taskCount = dayTasks.length;
+            const ariaLabel = `${date.getMonth() + 1}月${date.getDate()}日${taskCount > 0 ? `，${taskCount}项维护任务` : ''}`;
+
             return (
               <button
                 key={idx}
                 onClick={() => handleDateClick(dateStr)}
+                aria-label={ariaLabel}
+                aria-pressed={isSelected}
                 className={cn(
                   "aspect-square p-1 flex flex-col items-center justify-start border-b border-r border-garden-50 transition-all hover:bg-garden-50",
                   !isCurrentMonth && "opacity-40",
@@ -230,9 +238,10 @@ const DayTaskModal = ({ dateStr, tasks, onClose, onTaskClick }: DayTaskModalProp
           </div>
           <button
             onClick={onClose}
+            aria-label="关闭弹窗"
             className="p-2 rounded-full hover:bg-garden-100 transition-colors"
           >
-            <X size={20} className="text-garden-600" />
+            <X size={20} className="text-garden-600" aria-hidden="true" />
           </button>
         </div>
 
