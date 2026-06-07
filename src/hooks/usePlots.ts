@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Plot, PlotStatus, MaintenanceTask, DailyTask } from '../types/plot';
+import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats } from '../types/plot';
 import { mockPlots } from '../data/mockData';
-import { needsWatering, needsWeeding, daysSince, getUrgency, getNextWaterDate, getNextWeedDate, todayStr, daysSince as getDaysSince } from '../utils/dateUtils';
+import { needsWatering, needsWeeding, daysSince, getUrgency, getNextWaterDate, getNextWeedDate, todayStr, daysSince as getDaysSince, isSameDay, formatDateISO } from '../utils/dateUtils';
 
 const STORAGE_KEY = 'community-garden-plots';
 
@@ -200,6 +200,55 @@ export const usePlots = () => {
     });
   };
 
+  const getDashboardStats = useCallback((): DashboardStats => {
+    const totalPlots = plots.length;
+    const availablePlots = plots.filter(p => p.status === 'available').length;
+    const needsMaintenancePlots = plots.filter(p => p.status === 'needsMaintenance').length;
+
+    const today = todayStr();
+    const todayTasks = getDailyTasks(today);
+    const todayNewTasks = todayTasks.filter(t => isSameDay(t.dueDate, today)).length;
+
+    const claimedPlots = plots.filter(p => p.owner);
+
+    let longestUnwateredPlot: DashboardStats['longestUnwateredPlot'] = null;
+    let maxWaterDays = -1;
+    claimedPlots.forEach(plot => {
+      const days = daysSince(plot.lastWatered);
+      if (days !== Infinity && days > maxWaterDays) {
+        maxWaterDays = days;
+        longestUnwateredPlot = {
+          plotNumber: plot.plotNumber,
+          days,
+          plant: plot.plant,
+        };
+      }
+    });
+
+    let longestUnweededPlot: DashboardStats['longestUnweededPlot'] = null;
+    let maxWeedDays = -1;
+    claimedPlots.forEach(plot => {
+      const days = daysSince(plot.lastWeeded);
+      if (days !== Infinity && days > maxWeedDays) {
+        maxWeedDays = days;
+        longestUnweededPlot = {
+          plotNumber: plot.plotNumber,
+          days,
+          plant: plot.plant,
+        };
+      }
+    });
+
+    return {
+      totalPlots,
+      availablePlots,
+      needsMaintenancePlots,
+      todayNewTasks,
+      longestUnwateredPlot,
+      longestUnweededPlot,
+    };
+  }, [plots, getDailyTasks]);
+
   return {
     plots,
     isLoading,
@@ -209,5 +258,6 @@ export const usePlots = () => {
     getPlotById,
     getDailyTasks,
     importPlots,
+    getDashboardStats,
   };
 };

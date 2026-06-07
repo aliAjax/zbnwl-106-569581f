@@ -33,3 +33,20 @@ export interface DailyTask {
   isOverdue: boolean;
   daysOverdue: number;
 }
+
+export interface DashboardStats {
+  totalPlots: number;
+  availablePlots: number;
+  needsMaintenancePlots: number;
+  todayNewTasks: number;
+  longestUnwateredPlot: {
+    plotNumber: string;
+    days: number;
+    plant: string | null;
+  } | null;
+  longestUnweededPlot: {
+    plotNumber: string;
+    days: number;
+    plant: string | null;
+  } | null;
+}

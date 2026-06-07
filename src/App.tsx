@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Menu, Sprout, Upload, LayoutGrid, Calendar } from 'lucide-react';
+import { Menu, Sprout, Upload, LayoutGrid, Calendar, LayoutDashboard } from 'lucide-react';
 import { PlotGrid } from './components/PlotGrid';
 import { EditModal } from './components/EditModal';
 import { ClaimWizard } from './components/ClaimWizard';
@@ -7,15 +7,16 @@ import { TaskPanel } from './components/TaskPanel';
 import { FilterBar } from './components/FilterBar';
 import { ImportModal } from './components/ImportModal';
 import { MaintenanceCalendar } from './components/MaintenanceCalendar';
+import { Dashboard } from './components/Dashboard';
 import { usePlots } from './hooks/usePlots';
 import type { Plot, FilterType } from './types/plot';
 
-type ViewType = 'grid' | 'calendar';
+type ViewType = 'dashboard' | 'grid' | 'calendar';
 
 export default function App() {
-  const { plots, isLoading, updatePlot, claimPlot, getMaintenanceTasks, getPlotById, getDailyTasks, importPlots } = usePlots();
+  const { plots, isLoading, updatePlot, claimPlot, getMaintenanceTasks, getPlotById, getDailyTasks, importPlots, getDashboardStats } = usePlots();
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
-  const [currentView, setCurrentView] = useState<ViewType>('grid');
+  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isClaimWizardOpen, setIsClaimWizardOpen] = useState(false);
@@ -24,6 +25,7 @@ export default function App() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const tasks = useMemo(() => getMaintenanceTasks(), [getMaintenanceTasks]);
+  const dashboardStats = useMemo(() => getDashboardStats(), [getDashboardStats]);
 
   const filteredPlots = useMemo(() => {
     switch (currentFilter) {
@@ -142,6 +144,19 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <div className="flex bg-white rounded-xl border border-garden-200 p-1">
                   <button
+                    onClick={() => setCurrentView('dashboard')}
+                    aria-label="切换到概览仪表盘"
+                    aria-pressed={currentView === 'dashboard'}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-all ${
+                      currentView === 'dashboard'
+                        ? 'bg-garden-500 text-white shadow-sm'
+                        : 'text-garden-600 hover:bg-garden-50'
+                    }`}
+                  >
+                    <LayoutDashboard size={16} aria-hidden="true" />
+                    <span className="hidden sm:inline">概览</span>
+                  </button>
+                  <button
                     onClick={() => setCurrentView('grid')}
                     aria-label="切换到网格视图"
                     aria-pressed={currentView === 'grid'}
@@ -170,6 +185,13 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            {currentView === 'dashboard' && (
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-garden-800 mb-4">概览仪表盘</h2>
+                <Dashboard stats={dashboardStats} />
+              </div>
+            )}
 
             {currentView === 'grid' && (
               <>
