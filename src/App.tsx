@@ -1,16 +1,20 @@
 import { useState, useMemo } from 'react';
-import { Menu, Sprout, Upload } from 'lucide-react';
+import { Menu, Sprout, Upload, LayoutGrid, Calendar } from 'lucide-react';
 import { PlotGrid } from './components/PlotGrid';
 import { EditModal } from './components/EditModal';
 import { TaskPanel } from './components/TaskPanel';
 import { FilterBar } from './components/FilterBar';
 import { ImportModal } from './components/ImportModal';
+import { MaintenanceCalendar } from './components/MaintenanceCalendar';
 import { usePlots } from './hooks/usePlots';
 import type { Plot, FilterType } from './types/plot';
 
+type ViewType = 'grid' | 'calendar';
+
 export default function App() {
-  const { plots, isLoading, updatePlot, getMaintenanceTasks, getPlotById, importPlots } = usePlots();
+  const { plots, isLoading, updatePlot, getMaintenanceTasks, getPlotById, getDailyTasks, importPlots } = usePlots();
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
+  const [currentView, setCurrentView] = useState<ViewType>('grid');
   const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
@@ -106,31 +110,73 @@ export default function App() {
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col lg:flex-row gap-6">
           <main className="flex-1 min-w-0">
-            <div className="mb-6">
-              <FilterBar
-                currentFilter={currentFilter}
-                onFilterChange={setCurrentFilter}
-                counts={filterCounts}
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex-1">
+                {currentView === 'grid' && (
+                  <FilterBar
+                    currentFilter={currentFilter}
+                    onFilterChange={setCurrentFilter}
+                    counts={filterCounts}
+                  />
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex bg-white rounded-xl border border-garden-200 p-1">
+                  <button
+                    onClick={() => setCurrentView('grid')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-all ${
+                      currentView === 'grid'
+                        ? 'bg-garden-500 text-white shadow-sm'
+                        : 'text-garden-600 hover:bg-garden-50'
+                    }`}
+                  >
+                    <LayoutGrid size={16} />
+                    <span className="hidden sm:inline">网格</span>
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('calendar')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-all ${
+                      currentView === 'calendar'
+                        ? 'bg-garden-500 text-white shadow-sm'
+                        : 'text-garden-600 hover:bg-garden-50'
+                    }`}
+                  >
+                    <Calendar size={16} />
+                    <span className="hidden sm:inline">日历</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {currentView === 'grid' && (
+              <>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-garden-600">
+                    共 <span className="font-semibold text-garden-800">{filteredPlots.length}</span> 个地块
+                  </p>
+                  <button
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="px-4 py-2 bg-white border border-garden-200 text-garden-700 rounded-xl hover:bg-garden-50 transition-colors font-medium text-sm flex items-center gap-2 shadow-sm"
+                  >
+                    <Upload size={16} />
+                    批量导入
+                  </button>
+                </div>
+
+                <PlotGrid
+                  plots={filteredPlots}
+                  onPlotClick={handlePlotClick}
+                />
+              </>
+            )}
+
+            {currentView === 'calendar' && (
+              <MaintenanceCalendar
+                getDailyTasks={getDailyTasks}
+                onTaskClick={handleTaskClick}
               />
-            </div>
-
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-garden-600">
-                共 <span className="font-semibold text-garden-800">{filteredPlots.length}</span> 个地块
-              </p>
-              <button
-                onClick={() => setIsImportModalOpen(true)}
-                className="px-4 py-2 bg-white border border-garden-200 text-garden-700 rounded-xl hover:bg-garden-50 transition-colors font-medium text-sm flex items-center gap-2 shadow-sm"
-              >
-                <Upload size={16} />
-                批量导入
-              </button>
-            </div>
-
-            <PlotGrid
-              plots={filteredPlots}
-              onPlotClick={handlePlotClick}
-            />
+            )}
           </main>
 
           <aside className="hidden lg:block w-80 flex-shrink-0">

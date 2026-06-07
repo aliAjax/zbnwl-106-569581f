@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Plot, PlotStatus, MaintenanceTask } from '../types/plot';
+import type { Plot, PlotStatus, MaintenanceTask, DailyTask } from '../types/plot';
 import { mockPlots } from '../data/mockData';
-import { needsWatering, needsWeeding, daysSince, getUrgency } from '../utils/dateUtils';
+import { needsWatering, needsWeeding, daysSince, getUrgency, getNextWaterDate, getNextWeedDate, todayStr, daysSince as getDaysSince } from '../utils/dateUtils';
 
 const STORAGE_KEY = 'community-garden-plots';
 
@@ -92,6 +92,47 @@ export const usePlots = () => {
     return plots.find(p => p.id === id);
   };
 
+  const getDailyTasks = useCallback((dateStr: string): DailyTask[] => {
+    const tasks: DailyTask[] = [];
+    const today = todayStr();
+
+    plots.forEach(plot => {
+      if (!plot.owner) return;
+
+      const nextWaterDate = getNextWaterDate(plot.lastWatered);
+      if (nextWaterDate && nextWaterDate <= dateStr) {
+        const daysOverdue = Math.max(0, getDaysSince(plot.lastWatered) - 3);
+        tasks.push({
+          plotId: plot.id,
+          plotNumber: plot.plotNumber,
+          plant: plot.plant,
+          owner: plot.owner,
+          type: 'water',
+          dueDate: nextWaterDate,
+          isOverdue: nextWaterDate < today,
+          daysOverdue,
+        });
+      }
+
+      const nextWeedDate = getNextWeedDate(plot.lastWeeded);
+      if (nextWeedDate && nextWeedDate <= dateStr) {
+        const daysOverdue = Math.max(0, getDaysSince(plot.lastWeeded) - 7);
+        tasks.push({
+          plotId: plot.id,
+          plotNumber: plot.plotNumber,
+          plant: plot.plant,
+          owner: plot.owner,
+          type: 'weed',
+          dueDate: nextWeedDate,
+          isOverdue: nextWeedDate < today,
+          daysOverdue,
+        });
+      }
+    });
+
+    return tasks;
+  }, [plots]);
+
   const importPlots = (importedPlots: Partial<Plot>[]) => {
     setPlots(prev => {
       const updated = [...prev];
@@ -133,6 +174,7 @@ export const usePlots = () => {
     updatePlot,
     getMaintenanceTasks,
     getPlotById,
+    getDailyTasks,
     importPlots,
   };
 };

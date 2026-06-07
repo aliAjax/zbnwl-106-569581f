@@ -20,3 +20,14 @@ export interface MaintenanceTask {
   daysOverdue: number;
   urgency: 'low' | 'medium' | 'high';
 }
+
+export interface DailyTask {
+  plotId: string;
+  plotNumber: string;
+  plant: string | null;
+  owner: string | null;
+  type: 'water' | 'weed';
+  dueDate: string;
+  isOverdue: boolean;
+  daysOverdue: number;
+}

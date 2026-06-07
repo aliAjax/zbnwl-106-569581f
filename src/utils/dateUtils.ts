@@ -30,3 +30,56 @@ export const getUrgency = (daysOverdue: number): 'low' | 'medium' | 'high' => {
 export const todayStr = (): string => {
   return new Date().toISOString().split('T')[0];
 };
+
+export const addDays = (dateStr: string, days: number): string => {
+  const date = new Date(dateStr);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split('T')[0];
+};
+
+export const getNextWaterDate = (lastWatered: string | null): string | null => {
+  if (!lastWatered) return null;
+  return addDays(lastWatered, 3);
+};
+
+export const getNextWeedDate = (lastWeeded: string | null): string | null => {
+  if (!lastWeeded) return null;
+  return addDays(lastWeeded, 7);
+};
+
+export const isSameDay = (date1: string, date2: string): boolean => {
+  return date1 === date2;
+};
+
+export const isBeforeOrEqual = (date1: string, date2: string): boolean => {
+  return date1 <= date2;
+};
+
+export const getMonthDays = (year: number, month: number): Date[] => {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const days: Date[] = [];
+
+  let firstDayOfWeek = firstDay.getDay();
+  firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+
+  const prevMonthLastDay = new Date(year, month, 0).getDate();
+  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+    days.push(new Date(year, month - 1, prevMonthLastDay - i));
+  }
+
+  for (let i = 1; i <= lastDay.getDate(); i++) {
+    days.push(new Date(year, month, i));
+  }
+
+  const remaining = 42 - days.length;
+  for (let i = 1; i <= remaining; i++) {
+    days.push(new Date(year, month + 1, i));
+  }
+
+  return days;
+};
+
+export const formatDateISO = (date: Date): string => {
+  return date.toISOString().split('T')[0];
+};
