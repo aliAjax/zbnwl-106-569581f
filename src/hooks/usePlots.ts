@@ -95,8 +95,6 @@ export const usePlots = () => {
   const importPlots = (importedPlots: Partial<Plot>[]) => {
     setPlots(prev => {
       const updated = [...prev];
-      let addedCount = 0;
-      let updatedCount = 0;
 
       importedPlots.forEach(imported => {
         if (!imported.plotNumber) return;
@@ -110,7 +108,6 @@ export const usePlots = () => {
             ...merged,
             status: computeStatus(merged),
           };
-          updatedCount++;
         } else {
           const newPlot: Plot = {
             id: crypto.randomUUID(),
@@ -123,7 +120,6 @@ export const usePlots = () => {
             notes: imported.notes,
           };
           updated.push(newPlot);
-          addedCount++;
         }
       });
 
