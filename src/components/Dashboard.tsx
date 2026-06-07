@@ -1,11 +1,13 @@
-import { LayoutGrid, HandCoins, Wrench, CalendarDays, Droplets, Leaf } from 'lucide-react';
+import { LayoutGrid, HandCoins, Wrench, CalendarDays, Droplets, Leaf, MapPin } from 'lucide-react';
 import type { DashboardStats } from '../types/plot';
 
 interface DashboardProps {
   stats: DashboardStats;
+  onStartPatrol?: () => void;
+  hasUnfinishedPatrol?: boolean;
 }
 
-export const Dashboard = ({ stats }: DashboardProps) => {
+export const Dashboard = ({ stats, onStartPatrol, hasUnfinishedPatrol }: DashboardProps) => {
   const statCards = [
     {
       label: '总地块数',
@@ -141,6 +143,38 @@ export const Dashboard = ({ stats }: DashboardProps) => {
           )}
         </div>
       </div>
+
+      {onStartPatrol && (
+        <button
+          onClick={onStartPatrol}
+          className="w-full p-5 rounded-xl border-2 bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 hover:border-amber-300 hover:shadow-md transition-all text-left group"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center group-hover:bg-amber-200 transition-colors">
+              <MapPin className="w-6 h-6 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-amber-800">开始巡园</h3>
+                {hasUnfinishedPatrol && (
+                  <span className="px-2 py-0.5 bg-amber-200 text-amber-700 rounded-full text-xs font-medium flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                    进行中
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-amber-600 mt-0.5">
+                {hasUnfinishedPatrol
+                  ? '继续上次巡园进度，按地块编号依次维护'
+                  : '按地块编号顺序依次完成今日维护任务'}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center group-hover:bg-amber-600 transition-colors">
+              <span className="text-xl">→</span>
+            </div>
+          </div>
+        </button>
+      )}
     </div>
   );
 };

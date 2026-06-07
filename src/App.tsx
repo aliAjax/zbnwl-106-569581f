@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Menu, Sprout, Upload, LayoutGrid, Calendar, LayoutDashboard, Settings } from 'lucide-react';
+import { Menu, Sprout, Upload, LayoutGrid, Calendar, LayoutDashboard, Settings, MapPin } from 'lucide-react';
 import { PlotGrid } from './components/PlotGrid';
 import { EditModal } from './components/EditModal';
 import { ClaimWizard } from './components/ClaimWizard';
@@ -9,8 +9,10 @@ import { ImportModal } from './components/ImportModal';
 import { MaintenanceCalendar } from './components/MaintenanceCalendar';
 import { Dashboard } from './components/Dashboard';
 import { RulesConfigModal } from './components/RulesConfigModal';
+import { PatrolMode } from './components/PatrolMode';
 import { usePlots } from './hooks/usePlots';
 import { useMaintenanceRules } from './hooks/useMaintenanceRules';
+import { usePatrolMode } from './hooks/usePatrolMode';
 import type { Plot, FilterType } from './types/plot';
 
 type ViewType = 'dashboard' | 'grid' | 'calendar';
@@ -27,6 +29,20 @@ export default function App() {
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isRulesConfigOpen, setIsRulesConfigOpen] = useState(false);
+
+  const patrol = usePatrolMode({
+    plots,
+    rules,
+    getDailyTasks,
+    updatePlot,
+  });
+
+  const tasksForCurrentPlot = useMemo(() => {
+    if (!patrol.currentPlot) return [];
+    return patrol.getTasksForPlot(patrol.currentPlot.id);
+  }, [patrol.currentPlot, patrol.getTasksForPlot]);
+
+  const progressStats = useMemo(() => patrol.getProgressStats(), [patrol.getProgressStats]);
 
   const tasks = useMemo(() => getMaintenanceTasks(), [getMaintenanceTasks]);
 
@@ -147,6 +163,17 @@ export default function App() {
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  onClick={patrol.startPatrol}
+                  className="px-4 py-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors font-medium text-sm flex items-center gap-2 shadow-sm shadow-amber-500/20"
+                >
+                  <MapPin size={16} />
+                  <span className="hidden sm:inline">巡园模式</span>
+                  <span className="sm:hidden">巡园</span>
+                  {patrol.hasUnfinishedProgress() && (
+                    <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                  )}
+                </button>
                 <div className="flex bg-white rounded-xl border border-garden-200 p-1">
                   <button
                     onClick={() => setCurrentView('dashboard')}
@@ -201,7 +228,11 @@ export default function App() {
             {currentView === 'dashboard' && (
               <div className="mb-6">
                 <h2 className="text-lg font-semibold text-garden-800 mb-4">概览仪表盘</h2>
-                <Dashboard stats={dashboardStats} />
+                <Dashboard
+                  stats={dashboardStats}
+                  onStartPatrol={patrol.startPatrol}
+                  hasUnfinishedPatrol={patrol.hasUnfinishedProgress()}
+                />
               </div>
             )}
 
@@ -296,6 +327,23 @@ export default function App() {
         rules={rules}
         onSave={updateRules}
         onReset={resetToDefault}
+      />
+
+      <PatrolMode
+        isOpen={patrol.isPatrolModeActive}
+        currentPlot={patrol.currentPlot}
+        currentPlots={patrol.currentPlots}
+        progress={patrol.progress}
+        progressStats={progressStats}
+        tasksForPlot={tasksForCurrentPlot}
+        onClose={patrol.exitPatrol}
+        onMarkWatered={patrol.markWatered}
+        onMarkWeeded={patrol.markWeeded}
+        onUpdateNotes={patrol.updateNotes}
+        onMarkCompleteAndNext={patrol.markCompleteAndNext}
+        onPrevious={patrol.goToPrevious}
+        onSkip={patrol.skipCurrent}
+        onReset={patrol.resetProgress}
       />
     </div>
   );
