@@ -1,3 +1,13 @@
+export interface PlotHistoryEntry {
+  id: string;
+  plotId: string;
+  timestamp: string;
+  action: 'create' | 'update' | 'claim' | 'rollback';
+  description: string;
+  before: Partial<Plot>;
+  after: Partial<Plot>;
+}
+
 export type PlotStatus = 'available' | 'claimed' | 'needsMaintenance';
 
 export type FilterType = 'all' | 'available' | 'claimed' | 'needsMaintenance';

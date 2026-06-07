@@ -1,14 +1,40 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats, MaintenanceRules } from '../types/plot';
+import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats, MaintenanceRules, PlotHistoryEntry } from '../types/plot';
 import { mockPlots } from '../data/mockData';
 import { needsWatering, needsWeeding, daysSince, getUrgency, getNextWaterDate, getNextWeedDate, todayStr, daysSince as getDaysSince, isSameDay } from '../utils/dateUtils';
 import { DEFAULT_MAINTENANCE_RULES } from './useMaintenanceRules';
+import { usePlotHistory, formatFieldValue } from './usePlotHistory';
 
 const STORAGE_KEY = 'community-garden-plots';
+
+const HISTORY_FIELDS: (keyof Plot)[] = [
+  'owner',
+  'plant',
+  'lastWatered',
+  'lastWeeded',
+  'status',
+  'notes',
+];
+
+const FIELD_LABELS: Record<string, string> = {
+  owner: '认领人',
+  plant: '种植物',
+  lastWatered: '浇水日期',
+  lastWeeded: '除草日期',
+  status: '状态',
+  notes: '备注',
+};
 
 export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) => {
   const [plots, setPlots] = useState<Plot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const {
+    addHistoryEntry,
+    getHistoryByPlotId,
+    getHistoryEntryById,
+    isHistoryLoaded,
+  } = usePlotHistory();
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -54,6 +80,14 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
   }, [rules, isLoading, recalculateAllStatuses]);
 
   const updatePlot = (id: string, updates: Partial<Plot>) => {
+    const currentPlot = plots.find(p => p.id === id);
+    if (!currentPlot) return;
+
+    const before: Partial<Plot> = {};
+    HISTORY_FIELDS.forEach(field => {
+      (before as Record<string, unknown>)[field] = currentPlot[field];
+    });
+
     setPlots(prev => prev.map(plot => {
       if (plot.id !== id) return plot;
 
@@ -65,6 +99,66 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
 
       return { ...updatedPlot, status: computeStatus(updatedPlot) };
     }));
+
+    setTimeout(() => {
+      setPlots(prev => {
+        const updatedPlot = prev.find(p => p.id === id);
+        if (updatedPlot) {
+          const after: Partial<Plot> = {};
+          HISTORY_FIELDS.forEach(field => {
+            (after as Record<string, unknown>)[field] = updatedPlot[field];
+          });
+          addHistoryEntry(id, 'update', before, after);
+        }
+        return prev;
+      });
+    }, 0);
+  };
+
+  const rollbackPlot = (plotId: string, historyEntryId: string): boolean => {
+    const entry = getHistoryEntryById(historyEntryId);
+    if (!entry) return false;
+
+    const currentPlot = plots.find(p => p.id === plotId);
+    if (!currentPlot) return false;
+
+    const beforeRollback: Partial<Plot> = {};
+    HISTORY_FIELDS.forEach(field => {
+      (beforeRollback as Record<string, unknown>)[field] = currentPlot[field];
+    });
+
+    const rollbackData: Partial<Plot> = { ...entry.before };
+
+    if (rollbackData.status === undefined) {
+      rollbackData.status = computeStatus(rollbackData);
+    }
+
+    setPlots(prev => prev.map(plot => {
+      if (plot.id !== plotId) return plot;
+      return { ...plot, ...rollbackData };
+    }));
+
+    setTimeout(() => {
+      setPlots(prev => {
+        const afterRollbackPlot = prev.find(p => p.id === plotId);
+        if (afterRollbackPlot) {
+          const afterRollback: Partial<Plot> = {};
+          HISTORY_FIELDS.forEach(field => {
+            (afterRollback as Record<string, unknown>)[field] = afterRollbackPlot[field];
+          });
+          addHistoryEntry(
+            plotId,
+            'rollback',
+            beforeRollback,
+            afterRollback,
+            `回滚到 ${new Date(entry.timestamp).toLocaleString('zh-CN')} 的版本`
+          );
+        }
+        return prev;
+      });
+    }, 0);
+
+    return true;
   };
 
   const getMaintenanceTasks = useCallback((): MaintenanceTask[] => {
@@ -156,6 +250,14 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
     firstMaintenanceDate: string;
     notes?: string;
   }) => {
+    const currentPlot = plots.find(p => p.id === id);
+    const before: Partial<Plot> = {};
+    if (currentPlot) {
+      HISTORY_FIELDS.forEach(field => {
+        (before as Record<string, unknown>)[field] = currentPlot[field];
+      });
+    }
+
     const today = todayStr();
     setPlots(prev => prev.map(plot => {
       if (plot.id !== id) return plot;
@@ -171,6 +273,20 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
         notes: data.notes || plot.notes,
       };
     }));
+
+    setTimeout(() => {
+      setPlots(prev => {
+        const updatedPlot = prev.find(p => p.id === id);
+        if (updatedPlot) {
+          const after: Partial<Plot> = {};
+          HISTORY_FIELDS.forEach(field => {
+            (after as Record<string, unknown>)[field] = updatedPlot[field];
+          });
+          addHistoryEntry(id, 'claim', before, after, `认领地块：${data.owner}`);
+        }
+        return prev;
+      });
+    }, 0);
 
     try {
       localStorage.setItem('garden-contact', data.contact);
@@ -270,12 +386,15 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
   return {
     plots,
     isLoading,
+    isHistoryLoaded,
     updatePlot,
     claimPlot,
+    rollbackPlot,
     getMaintenanceTasks,
     getPlotById,
     getDailyTasks,
     importPlots,
     getDashboardStats,
+    getHistoryByPlotId,
   };
 };

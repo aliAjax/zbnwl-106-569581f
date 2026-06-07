@@ -17,7 +17,7 @@ type ViewType = 'dashboard' | 'grid' | 'calendar';
 
 export default function App() {
   const { rules, updateRules, resetToDefault, isLoading: rulesLoading } = useMaintenanceRules();
-  const { plots, isLoading, updatePlot, claimPlot, getMaintenanceTasks, getPlotById, getDailyTasks, importPlots, getDashboardStats } = usePlots(rules);
+  const { plots, isLoading, isHistoryLoaded, updatePlot, claimPlot, rollbackPlot, getMaintenanceTasks, getPlotById, getDailyTasks, importPlots, getDashboardStats, getHistoryByPlotId } = usePlots(rules);
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
@@ -264,6 +264,13 @@ export default function App() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSave}
+        history={selectedPlot ? getHistoryByPlotId(selectedPlot.id) : []}
+        onRollback={(entryId) => {
+          if (selectedPlot) {
+            rollbackPlot(selectedPlot.id, entryId);
+          }
+        }}
+        isHistoryLoaded={isHistoryLoaded}
       />
 
       <ClaimWizard
