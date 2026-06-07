@@ -100,7 +100,9 @@ export const useCollaborationSync = (options: UseCollaborationSyncOptions) => {
       setTimeout(() => {
         try {
           localStorage.removeItem(`${STORAGE_SYNC_KEY}-${message.requestId}`);
-        } catch {}
+        } catch {
+          // ignore cleanup errors
+        }
       }, 5000);
     } catch (e) {
       console.warn('localStorage sync fallback failed:', e);
@@ -129,9 +131,13 @@ export const useCollaborationSync = (options: UseCollaborationSyncOptions) => {
 
       switch (message.type) {
         case 'plot-update': {
-          const { plotId, updates, baseVersion } = message;
+          const { plotId, updates, baseVersion: remoteBaseVersion } = message;
           const currentPlot = getCurrentPlot(plotId);
-          const currentVersion = syncState.plotVersions[plotId] || 0;
+          const localVersion = syncState.plotVersions[plotId] || 0;
+
+          if (remoteBaseVersion > 0 && localVersion > remoteBaseVersion) {
+            return;
+          }
 
           if (!currentPlot) {
             onRemotePlotUpdate(plotId, updates);
@@ -475,6 +481,18 @@ export const useCollaborationSync = (options: UseCollaborationSyncOptions) => {
 
       onRemotePlotUpdate(plotId, finalChanges);
 
+      const resolvedMessage: PlotUpdateSyncMessage = {
+        type: 'plot-update',
+        clientId: clientIdRef.current,
+        timestamp: Date.now(),
+        requestId: generateRequestId(),
+        gardenId: gardenId || '',
+        plotId,
+        updates: finalChanges,
+        baseVersion: syncState.plotVersions[plotId] || 0,
+      };
+      broadcastMessage(resolvedMessage);
+
       setSyncState((prev) => ({
         ...prev,
         pendingConflicts: prev.pendingConflicts.filter(
@@ -483,7 +501,7 @@ export const useCollaborationSync = (options: UseCollaborationSyncOptions) => {
         plotVersions: incrementVersion(prev.plotVersions, plotId),
       }));
     },
-    [onRemotePlotUpdate]
+    [gardenId, syncState.plotVersions, onRemotePlotUpdate, broadcastMessage]
   );
 
   const clearPendingChange = useCallback((plotId: string, type: 'update' | 'claim' | 'rollback') => {

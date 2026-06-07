@@ -84,26 +84,11 @@ export default function App() {
     }
   }, []);
 
-  const handleResolveConflict = useCallback(
-    (conflict: ConflictInfo, choice: 'local' | 'remote' | 'merge') => {
-      resolveConflict(conflict, choice);
-      processNextConflict();
-    },
-    [processNextConflict]
-  );
-
-  const handleCloseConflict = useCallback(() => {
-    processNextConflict();
-  }, [processNextConflict]);
-
   const {
     syncState,
     sendPlotUpdate,
     sendPlotClaim,
     sendPlotRollback,
-    sendPlotsBatchUpdate,
-    sendHistoryAdd,
-    sendRulesUpdate,
     resolveConflict,
   } = useCollaborationSync({
     gardenId: currentGardenId,
@@ -120,6 +105,18 @@ export default function App() {
     },
     onConflictDetected: handleConflictDetected,
   });
+
+  const handleResolveConflict = useCallback(
+    (conflict: ConflictInfo, choice: 'local' | 'remote' | 'merge') => {
+      resolveConflict(conflict, choice);
+      processNextConflict();
+    },
+    [resolveConflict, processNextConflict]
+  );
+
+  const handleCloseConflict = useCallback(() => {
+    processNextConflict();
+  }, [processNextConflict]);
 
   useEffect(() => {
     setSyncHandlers({

@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
-import { X, AlertTriangle, Check, RefreshCw, User, Users, ArrowLeftRight } from 'lucide-react';
+import { X, AlertTriangle, RefreshCw, User, Users, ArrowLeftRight } from 'lucide-react';
 import type { ConflictInfo } from '../types/collaboration';
-import type { Plot } from '../types/plot';
 import { formatFieldValue } from '../hooks/usePlotHistory';
 
 const FIELD_LABELS: Record<string, string> = {
@@ -70,7 +69,7 @@ export const ConflictResolverModal = ({
 
   if (!isOpen || !conflict) return null;
 
-  const { basePlot, localTimestamp, remoteTimestamp, remoteClientId } = conflict;
+  const { basePlot, localTimestamp, remoteTimestamp } = conflict;
   const remoteTime = new Date(remoteTimestamp).toLocaleString('zh-CN');
   const localTime = new Date(localTimestamp).toLocaleString('zh-CN');
   const plotNumber = basePlot.plotNumber;

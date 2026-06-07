@@ -20,7 +20,6 @@ export const detectConflicts = (
   allFields.forEach((field) => {
     const localVal = localChanges[field as keyof Plot];
     const remoteVal = remoteChanges[field as keyof Plot];
-    const baseVal = basePlot[field as keyof Plot];
 
     if (field in localChanges && field in remoteChanges) {
       if (JSON.stringify(localVal) !== JSON.stringify(remoteVal)) {

@@ -53,7 +53,6 @@ export const usePlots = (options: UsePlotsOptions = {}) => {
     getHistoryByPlotId,
     getHistoryEntryById,
     isHistoryLoaded,
-    addHistoryEntries,
   } = usePlotHistory();
 
   const setSyncHandlers = useCallback((handlers: SyncHandlers) => {
