@@ -34,6 +34,15 @@ export interface DailyTask {
   daysOverdue: number;
 }
 
+export interface MaintenanceRules {
+  waterOverdueDays: number;
+  weedOverdueDays: number;
+  urgencyThresholds: {
+    medium: number;
+    high: number;
+  };
+}
+
 export interface DashboardStats {
   totalPlots: number;
   availablePlots: number;

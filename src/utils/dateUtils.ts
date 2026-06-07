@@ -1,3 +1,6 @@
+import type { MaintenanceRules } from '../types/plot';
+import { DEFAULT_MAINTENANCE_RULES } from '../hooks/useMaintenanceRules';
+
 export const formatDate = (dateStr: string | null): string => {
   if (!dateStr) return '未记录';
   const date = new Date(dateStr);
@@ -13,17 +16,20 @@ export const daysSince = (dateStr: string | null): number => {
   return diffDays;
 };
 
-export const needsWatering = (lastWatered: string | null): boolean => {
-  return daysSince(lastWatered) > 3;
+export const needsWatering = (lastWatered: string | null, rules?: Partial<MaintenanceRules>): boolean => {
+  const waterDays = rules?.waterOverdueDays ?? DEFAULT_MAINTENANCE_RULES.waterOverdueDays;
+  return daysSince(lastWatered) > waterDays;
 };
 
-export const needsWeeding = (lastWeeded: string | null): boolean => {
-  return daysSince(lastWeeded) > 7;
+export const needsWeeding = (lastWeeded: string | null, rules?: Partial<MaintenanceRules>): boolean => {
+  const weedDays = rules?.weedOverdueDays ?? DEFAULT_MAINTENANCE_RULES.weedOverdueDays;
+  return daysSince(lastWeeded) > weedDays;
 };
 
-export const getUrgency = (daysOverdue: number): 'low' | 'medium' | 'high' => {
-  if (daysOverdue <= 1) return 'low';
-  if (daysOverdue <= 3) return 'medium';
+export const getUrgency = (daysOverdue: number, rules?: Partial<MaintenanceRules>): 'low' | 'medium' | 'high' => {
+  const thresholds = rules?.urgencyThresholds ?? DEFAULT_MAINTENANCE_RULES.urgencyThresholds;
+  if (daysOverdue <= thresholds.medium) return 'low';
+  if (daysOverdue <= thresholds.high) return 'medium';
   return 'high';
 };
 
@@ -37,14 +43,16 @@ export const addDays = (dateStr: string, days: number): string => {
   return date.toISOString().split('T')[0];
 };
 
-export const getNextWaterDate = (lastWatered: string | null): string | null => {
+export const getNextWaterDate = (lastWatered: string | null, rules?: Partial<MaintenanceRules>): string | null => {
   if (!lastWatered) return null;
-  return addDays(lastWatered, 3);
+  const waterDays = rules?.waterOverdueDays ?? DEFAULT_MAINTENANCE_RULES.waterOverdueDays;
+  return addDays(lastWatered, waterDays);
 };
 
-export const getNextWeedDate = (lastWeeded: string | null): string | null => {
+export const getNextWeedDate = (lastWeeded: string | null, rules?: Partial<MaintenanceRules>): string | null => {
   if (!lastWeeded) return null;
-  return addDays(lastWeeded, 7);
+  const weedDays = rules?.weedOverdueDays ?? DEFAULT_MAINTENANCE_RULES.weedOverdueDays;
+  return addDays(lastWeeded, weedDays);
 };
 
 export const isSameDay = (date1: string, date2: string): boolean => {

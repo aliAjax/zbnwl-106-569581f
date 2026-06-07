@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Menu, Sprout, Upload, LayoutGrid, Calendar, LayoutDashboard } from 'lucide-react';
+import { Menu, Sprout, Upload, LayoutGrid, Calendar, LayoutDashboard, Settings } from 'lucide-react';
 import { PlotGrid } from './components/PlotGrid';
 import { EditModal } from './components/EditModal';
 import { ClaimWizard } from './components/ClaimWizard';
@@ -8,13 +8,16 @@ import { FilterBar } from './components/FilterBar';
 import { ImportModal } from './components/ImportModal';
 import { MaintenanceCalendar } from './components/MaintenanceCalendar';
 import { Dashboard } from './components/Dashboard';
+import { RulesConfigModal } from './components/RulesConfigModal';
 import { usePlots } from './hooks/usePlots';
+import { useMaintenanceRules } from './hooks/useMaintenanceRules';
 import type { Plot, FilterType } from './types/plot';
 
 type ViewType = 'dashboard' | 'grid' | 'calendar';
 
 export default function App() {
-  const { plots, isLoading, updatePlot, claimPlot, getMaintenanceTasks, getPlotById, getDailyTasks, importPlots, getDashboardStats } = usePlots();
+  const { rules, updateRules, resetToDefault, isLoading: rulesLoading } = useMaintenanceRules();
+  const { plots, isLoading, updatePlot, claimPlot, getMaintenanceTasks, getPlotById, getDailyTasks, importPlots, getDashboardStats } = usePlots(rules);
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
@@ -23,6 +26,7 @@ export default function App() {
   const [claimingPlot, setClaimingPlot] = useState<Plot | null>(null);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isRulesConfigOpen, setIsRulesConfigOpen] = useState(false);
 
   const tasks = useMemo(() => getMaintenanceTasks(), [getMaintenanceTasks]);
 
@@ -87,7 +91,7 @@ export default function App() {
 
   const existingPlotNumbers = useMemo(() => plots.map(p => p.plotNumber), [plots]);
 
-  if (isLoading) {
+  if (isLoading || rulesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -184,6 +188,13 @@ export default function App() {
                     <span className="hidden sm:inline">日历</span>
                   </button>
                 </div>
+                <button
+                  onClick={() => setIsRulesConfigOpen(true)}
+                  aria-label="维护规则配置"
+                  className="p-2.5 rounded-xl bg-white border border-garden-200 text-garden-600 hover:bg-garden-50 hover:text-garden-700 transition-colors"
+                >
+                  <Settings size={18} />
+                </button>
               </div>
             </div>
 
@@ -213,6 +224,7 @@ export default function App() {
                   plots={filteredPlots}
                   onPlotClick={handlePlotClick}
                   onPlotClaim={handlePlotClaim}
+                  rules={rules}
                 />
               </>
             )}
@@ -269,6 +281,14 @@ export default function App() {
         onClose={() => setIsImportModalOpen(false)}
         onImport={handleImport}
         existingPlotNumbers={existingPlotNumbers}
+      />
+
+      <RulesConfigModal
+        isOpen={isRulesConfigOpen}
+        onClose={() => setIsRulesConfigOpen(false)}
+        rules={rules}
+        onSave={updateRules}
+        onReset={resetToDefault}
       />
     </div>
   );

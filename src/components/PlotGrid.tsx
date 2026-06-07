@@ -1,13 +1,14 @@
-import type { Plot } from '../types/plot';
+import type { Plot, MaintenanceRules } from '../types/plot';
 import { PlotCard } from './PlotCard';
 
 interface PlotGridProps {
   plots: Plot[];
   onPlotClick: (plot: Plot) => void;
   onPlotClaim?: (plot: Plot) => void;
+  rules?: MaintenanceRules;
 }
 
-export const PlotGrid = ({ plots, onPlotClick, onPlotClaim }: PlotGridProps) => {
+export const PlotGrid = ({ plots, onPlotClick, onPlotClaim, rules }: PlotGridProps) => {
   if (plots.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -28,6 +29,7 @@ export const PlotGrid = ({ plots, onPlotClick, onPlotClaim }: PlotGridProps) => 
           index={index}
           onClick={() => onPlotClick(plot)}
           onClaim={onPlotClaim ? () => onPlotClaim(plot) : undefined}
+          rules={rules}
         />
       ))}
     </div>

@@ -1,5 +1,5 @@
 import { Droplets, Leaf, User, Info, HandCoins } from 'lucide-react';
-import type { Plot, PlotStatus } from '../types/plot';
+import type { Plot, PlotStatus, MaintenanceRules } from '../types/plot';
 import { formatDate, needsWatering, needsWeeding } from '../utils/dateUtils';
 
 interface PlotCardProps {
@@ -7,6 +7,7 @@ interface PlotCardProps {
   onClick: () => void;
   onClaim?: () => void;
   index: number;
+  rules?: MaintenanceRules;
 }
 
 const STATUS_CONFIG: Record<PlotStatus, {
@@ -39,10 +40,10 @@ const STATUS_CONFIG: Record<PlotStatus, {
   },
 };
 
-export const PlotCard = ({ plot, onClick, onClaim, index }: PlotCardProps) => {
+export const PlotCard = ({ plot, onClick, onClaim, index, rules }: PlotCardProps) => {
   const config = STATUS_CONFIG[plot.status];
-  const waterWarning = needsWatering(plot.lastWatered);
-  const weedWarning = needsWeeding(plot.lastWeeded);
+  const waterWarning = needsWatering(plot.lastWatered, rules);
+  const weedWarning = needsWeeding(plot.lastWeeded, rules);
   const isAvailable = plot.status === 'available';
 
   const handleCardClick = () => {

@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats } from '../types/plot';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats, MaintenanceRules } from '../types/plot';
 import { mockPlots } from '../data/mockData';
 import { needsWatering, needsWeeding, daysSince, getUrgency, getNextWaterDate, getNextWeedDate, todayStr, daysSince as getDaysSince, isSameDay } from '../utils/dateUtils';
+import { DEFAULT_MAINTENANCE_RULES } from './useMaintenanceRules';
 
 const STORAGE_KEY = 'community-garden-plots';
 
-export const usePlots = () => {
+export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) => {
   const [plots, setPlots] = useState<Plot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -29,15 +30,28 @@ export const usePlots = () => {
     }
   }, [plots, isLoading]);
 
-  const computeStatus = (plot: Partial<Plot>): PlotStatus => {
+  const computeStatus = useCallback((plot: Partial<Plot>): PlotStatus => {
     if (!plot.owner) {
       return 'available';
     }
-    if (needsWatering(plot.lastWatered ?? null) || needsWeeding(plot.lastWeeded ?? null)) {
+    if (needsWatering(plot.lastWatered ?? null, rules) || needsWeeding(plot.lastWeeded ?? null, rules)) {
       return 'needsMaintenance';
     }
     return 'claimed';
-  };
+  }, [rules]);
+
+  const recalculateAllStatuses = useCallback(() => {
+    setPlots(prev => prev.map(plot => ({
+      ...plot,
+      status: computeStatus(plot),
+    })));
+  }, [computeStatus]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      recalculateAllStatuses();
+    }
+  }, [rules, isLoading, recalculateAllStatuses]);
 
   const updatePlot = (id: string, updates: Partial<Plot>) => {
     setPlots(prev => prev.map(plot => {
@@ -60,24 +74,26 @@ export const usePlots = () => {
       if (!plot.owner) return;
 
       const waterDays = daysSince(plot.lastWatered);
-      if (waterDays > 3) {
+      if (waterDays > rules.waterOverdueDays) {
+        const daysOverdue = waterDays - rules.waterOverdueDays;
         tasks.push({
           plotId: plot.id,
           plotNumber: plot.plotNumber,
           type: 'water',
-          daysOverdue: waterDays - 3,
-          urgency: getUrgency(waterDays - 3),
+          daysOverdue,
+          urgency: getUrgency(daysOverdue, rules),
         });
       }
 
       const weedDays = daysSince(plot.lastWeeded);
-      if (weedDays > 7) {
+      if (weedDays > rules.weedOverdueDays) {
+        const daysOverdue = weedDays - rules.weedOverdueDays;
         tasks.push({
           plotId: plot.id,
           plotNumber: plot.plotNumber,
           type: 'weed',
-          daysOverdue: weedDays - 7,
-          urgency: getUrgency(weedDays - 7),
+          daysOverdue,
+          urgency: getUrgency(daysOverdue, rules),
         });
       }
     });
@@ -86,7 +102,7 @@ export const usePlots = () => {
       const urgencyOrder = { high: 0, medium: 1, low: 2 };
       return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
     });
-  }, [plots]);
+  }, [plots, rules]);
 
   const getPlotById = (id: string) => {
     return plots.find(p => p.id === id);
@@ -99,9 +115,9 @@ export const usePlots = () => {
     plots.forEach(plot => {
       if (!plot.owner) return;
 
-      const nextWaterDate = getNextWaterDate(plot.lastWatered);
+      const nextWaterDate = getNextWaterDate(plot.lastWatered, rules);
       if (nextWaterDate && nextWaterDate <= dateStr) {
-        const daysOverdue = Math.max(0, getDaysSince(plot.lastWatered) - 3);
+        const daysOverdue = Math.max(0, getDaysSince(plot.lastWatered) - rules.waterOverdueDays);
         tasks.push({
           plotId: plot.id,
           plotNumber: plot.plotNumber,
@@ -114,9 +130,9 @@ export const usePlots = () => {
         });
       }
 
-      const nextWeedDate = getNextWeedDate(plot.lastWeeded);
+      const nextWeedDate = getNextWeedDate(plot.lastWeeded, rules);
       if (nextWeedDate && nextWeedDate <= dateStr) {
-        const daysOverdue = Math.max(0, getDaysSince(plot.lastWeeded) - 7);
+        const daysOverdue = Math.max(0, getDaysSince(plot.lastWeeded) - rules.weedOverdueDays);
         tasks.push({
           plotId: plot.id,
           plotNumber: plot.plotNumber,
@@ -131,7 +147,7 @@ export const usePlots = () => {
     });
 
     return tasks;
-  }, [plots]);
+  }, [plots, rules]);
 
   const claimPlot = (id: string, data: {
     owner: string;
