@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats, MaintenanceRules, PlotHistoryEntry } from '../types/plot';
+import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats, MaintenanceRules } from '../types/plot';
 import { mockPlots } from '../data/mockData';
 import { needsWatering, needsWeeding, daysSince, getUrgency, getNextWaterDate, getNextWeedDate, todayStr, daysSince as getDaysSince, isSameDay } from '../utils/dateUtils';
 import { DEFAULT_MAINTENANCE_RULES } from './useMaintenanceRules';
-import { usePlotHistory, formatFieldValue } from './usePlotHistory';
+import { usePlotHistory } from './usePlotHistory';
 
 const STORAGE_KEY = 'community-garden-plots';
 
@@ -15,15 +15,6 @@ const HISTORY_FIELDS: (keyof Plot)[] = [
   'status',
   'notes',
 ];
-
-const FIELD_LABELS: Record<string, string> = {
-  owner: '认领人',
-  plant: '种植物',
-  lastWatered: '浇水日期',
-  lastWeeded: '除草日期',
-  status: '状态',
-  notes: '备注',
-};
 
 export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) => {
   const [plots, setPlots] = useState<Plot[]>([]);
