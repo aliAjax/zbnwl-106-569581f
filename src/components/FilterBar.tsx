@@ -21,7 +21,7 @@ export const FilterBar = ({ currentFilter, onFilterChange, counts }: FilterBarPr
         <Filter size={18} />
         <span className="font-medium text-sm hidden sm:inline">筛选:</span>
       </div>
-      
+
       <div className="flex flex-wrap gap-2">
         {FILTER_OPTIONS.map(option => (
           <button

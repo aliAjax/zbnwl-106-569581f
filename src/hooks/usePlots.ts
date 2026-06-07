@@ -41,34 +41,24 @@ export const usePlots = () => {
 
   const updatePlot = (id: string, updates: Partial<Plot>) => {
     setPlots(prev => prev.map(plot => {
-      if (plot.id === id) {
-        const updatedPlot = { ...plot, ...updates };
-        
-        const isMaintenanceUpdated = 
-          updates.lastWatered !== undefined || 
-          updates.lastWeeded !== undefined ||
-          updates.owner !== undefined;
-        
-        if (isMaintenanceUpdated) {
-          return { ...updatedPlot, status: computeStatus(updatedPlot) };
-        }
-        
-        if (updates.status !== undefined) {
-          return updatedPlot;
-        }
-        
-        return { ...updatedPlot, status: computeStatus(updatedPlot) };
+      if (plot.id !== id) return plot;
+
+      const updatedPlot = { ...plot, ...updates };
+
+      if (updates.status !== undefined) {
+        return updatedPlot;
       }
-      return plot;
+
+      return { ...updatedPlot, status: computeStatus(updatedPlot) };
     }));
   };
 
   const getMaintenanceTasks = useCallback((): MaintenanceTask[] => {
     const tasks: MaintenanceTask[] = [];
-    
+
     plots.forEach(plot => {
       if (!plot.owner) return;
-      
+
       const waterDays = daysSince(plot.lastWatered);
       if (waterDays > 3) {
         tasks.push({
@@ -79,7 +69,7 @@ export const usePlots = () => {
           urgency: getUrgency(waterDays - 3),
         });
       }
-      
+
       const weedDays = daysSince(plot.lastWeeded);
       if (weedDays > 7) {
         tasks.push({
@@ -91,7 +81,7 @@ export const usePlots = () => {
         });
       }
     });
-    
+
     return tasks.sort((a, b) => {
       const urgencyOrder = { high: 0, medium: 1, low: 2 };
       return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];

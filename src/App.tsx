@@ -79,7 +79,7 @@ export default function App() {
                 <p className="text-xs text-garden-500 hidden sm:block">地块认领与维护管理</p>
               </div>
             </div>
-            
+
             <button
               onClick={() => setIsTaskPanelOpen(!isTaskPanelOpen)}
               className="lg:hidden relative p-2.5 rounded-xl bg-white border border-garden-200 hover:bg-garden-50 transition-colors"

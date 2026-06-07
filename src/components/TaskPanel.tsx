@@ -37,12 +37,12 @@ export const TaskPanel = ({ tasks, isOpen, onClose, onTaskClick }: TaskPanelProp
   return (
     <>
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/30 z-40 lg:hidden"
           onClick={onClose}
         />
       )}
-      
+
       <div className={`
         fixed top-0 right-0 h-full w-full sm:w-80 bg-white shadow-2xl z-50
         transform transition-transform duration-300 ease-out
@@ -121,7 +121,7 @@ export const TaskPanel = ({ tasks, isOpen, onClose, onTaskClick }: TaskPanelProp
 
 const TaskItem = ({ task, onClick }: { task: MaintenanceTask; onClick: () => void }) => {
   const config = URGENCY_CONFIG[task.urgency];
-  
+
   return (
     <button
       onClick={onClick}
@@ -134,7 +134,7 @@ const TaskItem = ({ task, onClick }: { task: MaintenanceTask; onClick: () => voi
           <Leaf size={18} className="text-garden-500" />
         )}
       </div>
-      
+
       <div className="flex-1 text-left min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-garden-800">地块 {task.plotNumber}</span>
@@ -146,7 +146,7 @@ const TaskItem = ({ task, onClick }: { task: MaintenanceTask; onClick: () => voi
           超期 {task.daysOverdue} 天
         </p>
       </div>
-      
+
       <ChevronRight size={18} className="text-garden-300 group-hover:text-garden-500 transition-colors flex-shrink-0" />
     </button>
   );

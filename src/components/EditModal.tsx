@@ -27,6 +27,7 @@ const INITIAL_FORM_DATA = {
 
 export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => {
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+  const [isStatusManuallyChanged, setIsStatusManuallyChanged] = useState(false);
 
   useEffect(() => {
     if (plot) {
@@ -38,21 +39,30 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
         status: plot.status,
         notes: plot.notes || '',
       });
+      setIsStatusManuallyChanged(false);
     }
   }, [plot]);
 
   if (!isOpen || !plot) return null;
 
+  const handleStatusClick = (status: PlotStatus) => {
+    setFormData(prev => ({ ...prev, status }));
+    setIsStatusManuallyChanged(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(plot.id, {
+    const updates: Partial<Plot> = {
       owner: formData.owner || null,
       plant: formData.plant || null,
       lastWatered: formData.lastWatered || null,
       lastWeeded: formData.lastWeeded || null,
-      status: formData.status,
       notes: formData.notes || undefined,
-    });
+    };
+    if (isStatusManuallyChanged) {
+      updates.status = formData.status;
+    }
+    onSave(plot.id, updates);
     onClose();
   };
 
@@ -66,11 +76,11 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      
+
       <div className="relative w-full max-w-md bg-cream rounded-2xl shadow-2xl animate-slide-in max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-cream border-b border-garden-100 p-4 flex items-center justify-between rounded-t-2xl">
           <h2 className="text-xl font-serif font-bold text-garden-800">
@@ -167,7 +177,7 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, status: option.value }))}
+                  onClick={() => handleStatusClick(option.value)}
                   className={`
                     px-2 py-2.5 rounded-xl border-2 text-sm font-medium transition-all
                     ${formData.status === option.value
@@ -182,7 +192,7 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
             </div>
             <p className="flex items-start gap-1.5 text-xs text-garden-500">
               <Info size={12} className="mt-0.5 flex-shrink-0" />
-              <span>更新浇水/除草日期或认领人后，状态将自动刷新</span>
+              <span>手动选择状态后将覆盖自动计算，更新浇水/除草日期将自动刷新状态</span>
             </p>
           </div>
 
