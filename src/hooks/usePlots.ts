@@ -133,6 +133,36 @@ export const usePlots = () => {
     return tasks;
   }, [plots]);
 
+  const claimPlot = (id: string, data: {
+    owner: string;
+    contact: string;
+    plant: string;
+    firstMaintenanceDate: string;
+    notes?: string;
+  }) => {
+    const today = todayStr();
+    setPlots(prev => prev.map(plot => {
+      if (plot.id !== id) return plot;
+      return {
+        ...plot,
+        owner: data.owner,
+        contact: data.contact,
+        plant: data.plant,
+        firstMaintenanceDate: data.firstMaintenanceDate,
+        lastWatered: today,
+        lastWeeded: today,
+        status: 'claimed' as PlotStatus,
+        notes: data.notes || plot.notes,
+      };
+    }));
+
+    try {
+      localStorage.setItem('garden-contact', data.contact);
+    } catch (e) {
+      console.warn('Failed to save contact to localStorage:', e);
+    }
+  };
+
   const importPlots = (importedPlots: Partial<Plot>[]) => {
     setPlots(prev => {
       const updated = [...prev];
@@ -154,9 +184,11 @@ export const usePlots = () => {
             id: crypto.randomUUID(),
             plotNumber: imported.plotNumber!,
             owner: imported.owner ?? null,
+            contact: imported.contact ?? null,
             plant: imported.plant ?? null,
             lastWatered: imported.lastWatered ?? null,
             lastWeeded: imported.lastWeeded ?? null,
+            firstMaintenanceDate: imported.firstMaintenanceDate ?? null,
             status: computeStatus(imported),
             notes: imported.notes,
           };
@@ -172,6 +204,7 @@ export const usePlots = () => {
     plots,
     isLoading,
     updatePlot,
+    claimPlot,
     getMaintenanceTasks,
     getPlotById,
     getDailyTasks,

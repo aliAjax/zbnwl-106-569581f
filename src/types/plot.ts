@@ -6,9 +6,11 @@ export interface Plot {
   id: string;
   plotNumber: string;
   owner: string | null;
+  contact: string | null;
   plant: string | null;
   lastWatered: string | null;
   lastWeeded: string | null;
+  firstMaintenanceDate: string | null;
   status: PlotStatus;
   notes?: string;
 }

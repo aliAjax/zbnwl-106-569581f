@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Droplets, Leaf, User, Sprout, StickyNote, Save, Flag, Info } from 'lucide-react';
+import { X, Droplets, Leaf, User, Sprout, StickyNote, Save, Flag, Info, Phone, CalendarDays } from 'lucide-react';
 import type { Plot, PlotStatus } from '../types/plot';
 import { todayStr } from '../utils/dateUtils';
 
@@ -18,9 +18,11 @@ const STATUS_OPTIONS: { value: PlotStatus; label: string; color: string }[] = [
 
 const INITIAL_FORM_DATA = {
   owner: '',
+  contact: '',
   plant: '',
   lastWatered: '',
   lastWeeded: '',
+  firstMaintenanceDate: '',
   status: 'available' as PlotStatus,
   notes: '',
 };
@@ -33,9 +35,11 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
     if (plot) {
       setFormData({
         owner: plot.owner || '',
+        contact: plot.contact || '',
         plant: plot.plant || '',
         lastWatered: plot.lastWatered || '',
         lastWeeded: plot.lastWeeded || '',
+        firstMaintenanceDate: plot.firstMaintenanceDate || '',
         status: plot.status,
         notes: plot.notes || '',
       });
@@ -54,9 +58,11 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
     e.preventDefault();
     const updates: Partial<Plot> = {
       owner: formData.owner || null,
+      contact: formData.contact || null,
       plant: formData.plant || null,
       lastWatered: formData.lastWatered || null,
       lastWeeded: formData.lastWeeded || null,
+      firstMaintenanceDate: formData.firstMaintenanceDate || null,
       notes: formData.notes || undefined,
     };
     if (isStatusManuallyChanged) {
@@ -111,6 +117,20 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
 
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-garden-700 mb-2">
+              <Phone size={16} />
+              联系方式
+            </label>
+            <input
+              type="tel"
+              value={formData.contact}
+              onChange={e => setFormData(prev => ({ ...prev, contact: e.target.value }))}
+              placeholder="输入手机号"
+              className="w-full px-4 py-2.5 rounded-xl border border-garden-200 bg-white focus:border-garden-400 focus:ring-2 focus:ring-garden-200 outline-none transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-garden-700 mb-2">
               <Sprout size={16} />
               种植物
             </label>
@@ -119,6 +139,19 @@ export const EditModal = ({ plot, isOpen, onClose, onSave }: EditModalProps) => 
               value={formData.plant}
               onChange={e => setFormData(prev => ({ ...prev, plant: e.target.value }))}
               placeholder="例如：番茄 🍅"
+              className="w-full px-4 py-2.5 rounded-xl border border-garden-200 bg-white focus:border-garden-400 focus:ring-2 focus:ring-garden-200 outline-none transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-garden-700 mb-2">
+              <CalendarDays size={16} />
+              首次维护日期
+            </label>
+            <input
+              type="date"
+              value={formData.firstMaintenanceDate}
+              onChange={e => setFormData(prev => ({ ...prev, firstMaintenanceDate: e.target.value }))}
               className="w-full px-4 py-2.5 rounded-xl border border-garden-200 bg-white focus:border-garden-400 focus:ring-2 focus:ring-garden-200 outline-none transition-all"
             />
           </div>

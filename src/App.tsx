@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Menu, Sprout, Upload, LayoutGrid, Calendar } from 'lucide-react';
 import { PlotGrid } from './components/PlotGrid';
 import { EditModal } from './components/EditModal';
+import { ClaimWizard } from './components/ClaimWizard';
 import { TaskPanel } from './components/TaskPanel';
 import { FilterBar } from './components/FilterBar';
 import { ImportModal } from './components/ImportModal';
@@ -12,11 +13,13 @@ import type { Plot, FilterType } from './types/plot';
 type ViewType = 'grid' | 'calendar';
 
 export default function App() {
-  const { plots, isLoading, updatePlot, getMaintenanceTasks, getPlotById, getDailyTasks, importPlots } = usePlots();
+  const { plots, isLoading, updatePlot, claimPlot, getMaintenanceTasks, getPlotById, getDailyTasks, importPlots } = usePlots();
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
   const [currentView, setCurrentView] = useState<ViewType>('grid');
   const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isClaimWizardOpen, setIsClaimWizardOpen] = useState(false);
+  const [claimingPlot, setClaimingPlot] = useState<Plot | null>(null);
   const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
@@ -45,6 +48,21 @@ export default function App() {
   const handlePlotClick = (plot: Plot) => {
     setSelectedPlot(plot);
     setIsModalOpen(true);
+  };
+
+  const handlePlotClaim = (plot: Plot) => {
+    setClaimingPlot(plot);
+    setIsClaimWizardOpen(true);
+  };
+
+  const handleClaimSubmit = (id: string, data: {
+    owner: string;
+    contact: string;
+    plant: string;
+    firstMaintenanceDate: string;
+    notes?: string;
+  }) => {
+    claimPlot(id, data);
   };
 
   const handleTaskClick = (plotId: string) => {
@@ -171,6 +189,7 @@ export default function App() {
                 <PlotGrid
                   plots={filteredPlots}
                   onPlotClick={handlePlotClick}
+                  onPlotClaim={handlePlotClaim}
                 />
               </>
             )}
@@ -210,6 +229,16 @@ export default function App() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSave}
+      />
+
+      <ClaimWizard
+        plot={claimingPlot}
+        isOpen={isClaimWizardOpen}
+        onClose={() => {
+          setIsClaimWizardOpen(false);
+          setClaimingPlot(null);
+        }}
+        onClaim={handleClaimSubmit}
       />
 
       <ImportModal

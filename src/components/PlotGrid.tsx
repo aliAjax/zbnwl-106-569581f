@@ -4,9 +4,10 @@ import { PlotCard } from './PlotCard';
 interface PlotGridProps {
   plots: Plot[];
   onPlotClick: (plot: Plot) => void;
+  onPlotClaim?: (plot: Plot) => void;
 }
 
-export const PlotGrid = ({ plots, onPlotClick }: PlotGridProps) => {
+export const PlotGrid = ({ plots, onPlotClick, onPlotClaim }: PlotGridProps) => {
   if (plots.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -26,6 +27,7 @@ export const PlotGrid = ({ plots, onPlotClick }: PlotGridProps) => {
           plot={plot}
           index={index}
           onClick={() => onPlotClick(plot)}
+          onClaim={onPlotClaim ? () => onPlotClaim(plot) : undefined}
         />
       ))}
     </div>
