@@ -45,7 +45,7 @@ export const PlotCard = ({ plot, onClick, onClaim, index }: PlotCardProps) => {
   const weedWarning = needsWeeding(plot.lastWeeded);
   const isAvailable = plot.status === 'available';
 
-  const handleCardClick = (e: React.MouseEvent) => {
+  const handleCardClick = () => {
     if (isAvailable && onClaim) {
       onClaim();
     } else {

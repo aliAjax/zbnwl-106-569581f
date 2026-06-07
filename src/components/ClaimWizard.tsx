@@ -57,7 +57,7 @@ export const ClaimWizard = ({ plot, isOpen, onClose, onClaim }: ClaimWizardProps
   useEffect(() => {
     if (isOpen) {
       const savedContact = localStorage.getItem('garden-contact') || '';
-      setFormData(prev => ({
+      setFormData(() => ({
         ...INITIAL_FORM_DATA,
         contact: savedContact,
         firstMaintenanceDate: todayStr(),
