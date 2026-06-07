@@ -129,7 +129,7 @@ export const useGardenStore = create<GardenState>()(
       isMigrated: false,
 
       initialize: () => {
-        const { gardens, currentGardenId, gardenData } = get();
+        const { gardens } = get();
         
         if (gardens.length === 0 && !get().isMigrated) {
           const legacy = migrateLegacyData();
@@ -174,7 +174,12 @@ export const useGardenStore = create<GardenState>()(
 
       deleteGarden: (gardenId) => {
         set((state) => {
-          const { [gardenId]: _, ...remainingData } = state.gardenData;
+          const remainingData: typeof state.gardenData = {};
+          Object.entries(state.gardenData).forEach(([key, value]) => {
+            if (key !== gardenId) {
+              remainingData[key] = value;
+            }
+          });
           const newGardens = state.gardens.filter((g) => g.id !== gardenId);
           let newCurrentId = state.currentGardenId;
 

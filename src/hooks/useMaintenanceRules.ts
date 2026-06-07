@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { MaintenanceRules } from '../types/plot';
 import { useGardenStore } from '../store/useGardenStore';
 
@@ -20,9 +20,12 @@ export const useMaintenanceRules = () => {
 
   const [rules, setRules] = useState<MaintenanceRules>(DEFAULT_MAINTENANCE_RULES);
   const [isLoading, setIsLoading] = useState(true);
+  const lastSyncedGardenIdRef = useRef<string | null>(null);
+  const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
-    if (gardenData) {
+    if (gardenData && currentGardenId) {
+      isInitialLoadRef.current = true;
       setRules({
         ...DEFAULT_MAINTENANCE_RULES,
         ...gardenData.rules,
@@ -31,15 +34,20 @@ export const useMaintenanceRules = () => {
           ...gardenData.rules?.urgencyThresholds,
         },
       });
+      lastSyncedGardenIdRef.current = currentGardenId;
       setIsLoading(false);
     } else {
       setRules(DEFAULT_MAINTENANCE_RULES);
       setIsLoading(false);
     }
-  }, [gardenData]);
+  }, [gardenData, currentGardenId]);
 
   useEffect(() => {
-    if (currentGardenId && !isLoading) {
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      return;
+    }
+    if (currentGardenId && !isLoading && lastSyncedGardenIdRef.current === currentGardenId) {
       updateRules(currentGardenId, rules);
     }
   }, [rules, currentGardenId, isLoading, updateRules]);

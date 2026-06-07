@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats, MaintenanceRules } from '../types/plot';
 import { needsWatering, needsWeeding, daysSince, getUrgency, getNextWaterDate, getNextWeedDate, todayStr, daysSince as getDaysSince, isSameDay } from '../utils/dateUtils';
 import { DEFAULT_MAINTENANCE_RULES } from './useMaintenanceRules';
@@ -23,6 +23,8 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
 
   const [plots, setPlots] = useState<Plot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const lastSyncedGardenIdRef = useRef<string | null>(null);
+  const isInitialLoadRef = useRef(true);
 
   const {
     addHistoryEntry,
@@ -32,17 +34,23 @@ export const usePlots = (rules: MaintenanceRules = DEFAULT_MAINTENANCE_RULES) =>
   } = usePlotHistory();
 
   useEffect(() => {
-    if (gardenData) {
+    if (gardenData && currentGardenId) {
+      isInitialLoadRef.current = true;
       setPlots(gardenData.plots);
+      lastSyncedGardenIdRef.current = currentGardenId;
       setIsLoading(false);
     } else {
-      setPlots([]);
-      setIsLoading(false);
-    }
-  }, [gardenData]);
+        setPlots([]);
+        setIsLoading(false);
+      }
+  }, [gardenData, currentGardenId]);
 
   useEffect(() => {
-    if (currentGardenId && !isLoading) {
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      return;
+    }
+    if (currentGardenId && !isLoading && lastSyncedGardenIdRef.current === currentGardenId) {
       updatePlots(currentGardenId, plots);
     }
   }, [plots, currentGardenId, isLoading, updatePlots]);

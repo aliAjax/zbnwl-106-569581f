@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Plot, PlotHistoryEntry } from '../types/plot';
 import { useGardenStore } from '../store/useGardenStore';
 
@@ -80,24 +80,32 @@ export const usePlotHistory = () => {
 
   const [history, setHistory] = useState<PlotHistoryEntry[]>([]);
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
+  const lastSyncedGardenIdRef = useRef<string | null>(null);
+  const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
-    if (gardenData) {
+    if (gardenData && currentGardenId) {
+      isInitialLoadRef.current = true;
       const migrated = (gardenData.history || []).map((entry) => ({
         ...entry,
         before: entry.before ?? {},
         after: entry.after ?? {},
       }));
       setHistory(migrated);
+      lastSyncedGardenIdRef.current = currentGardenId;
       setIsHistoryLoaded(true);
     } else {
       setHistory([]);
       setIsHistoryLoaded(true);
     }
-  }, [gardenData]);
+  }, [gardenData, currentGardenId]);
 
   useEffect(() => {
-    if (currentGardenId && isHistoryLoaded) {
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      return;
+    }
+    if (currentGardenId && isHistoryLoaded && lastSyncedGardenIdRef.current === currentGardenId) {
       updateHistory(currentGardenId, history);
     }
   }, [history, currentGardenId, isHistoryLoaded, updateHistory]);
