@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Plot, PlotStatus, MaintenanceTask, DailyTask, DashboardStats, MaintenanceRules } from '../types/plot';
 import { mockPlots } from '../data/mockData';
 import { needsWatering, needsWeeding, daysSince, getUrgency, getNextWaterDate, getNextWeedDate, todayStr, daysSince as getDaysSince, isSameDay } from '../utils/dateUtils';
