@@ -32,17 +32,12 @@ export default function App() {
 
   const patrol = usePatrolMode({
     plots,
-    rules,
     getDailyTasks,
     updatePlot,
   });
 
-  const tasksForCurrentPlot = useMemo(() => {
-    if (!patrol.currentPlot) return [];
-    return patrol.getTasksForPlot(patrol.currentPlot.id);
-  }, [patrol.currentPlot, patrol.getTasksForPlot]);
-
-  const progressStats = useMemo(() => patrol.getProgressStats(), [patrol.getProgressStats]);
+  const tasksForCurrentPlot = patrol.currentPlot ? patrol.getTasksForPlot(patrol.currentPlot.id) : [];
+  const progressStats = patrol.getProgressStats();
 
   const tasks = useMemo(() => getMaintenanceTasks(), [getMaintenanceTasks]);
 
@@ -332,7 +327,6 @@ export default function App() {
       <PatrolMode
         isOpen={patrol.isPatrolModeActive}
         currentPlot={patrol.currentPlot}
-        currentPlots={patrol.currentPlots}
         progress={patrol.progress}
         progressStats={progressStats}
         tasksForPlot={tasksForCurrentPlot}

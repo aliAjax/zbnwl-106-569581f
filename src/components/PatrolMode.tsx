@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, Droplets, Leaf, User, Sprout, StickyNote, ChevronLeft, ChevronRight, Check, SkipForward, AlertTriangle, MapPin } from 'lucide-react';
+import { X, Droplets, Leaf, User, Sprout, StickyNote, ChevronLeft, Check, SkipForward, AlertTriangle, MapPin } from 'lucide-react';
 import type { Plot, DailyTask } from '../types/plot';
-import { formatDate, daysSince } from '../utils/dateUtils';
+import { formatDate, daysSince, todayStr } from '../utils/dateUtils';
 
 interface PatrolModeProps {
   isOpen: boolean;
   currentPlot: Plot | null;
-  currentPlots: Plot[];
   progress: {
     currentIndex: number;
     completedPlotIds: string[];
@@ -32,7 +31,6 @@ interface PatrolModeProps {
 export const PatrolMode = ({
   isOpen,
   currentPlot,
-  currentPlots,
   progress,
   progressStats,
   tasksForPlot,
@@ -49,14 +47,15 @@ export const PatrolMode = ({
   const [weeded, setWeeded] = useState(false);
   const [notes, setNotes] = useState('');
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const today = todayStr();
 
   useEffect(() => {
     if (currentPlot) {
-      setWatered(false);
-      setWeeded(false);
+      setWatered(currentPlot.lastWatered === today);
+      setWeeded(currentPlot.lastWeeded === today);
       setNotes(progress.notesByPlotId[currentPlot.id] || '');
     }
-  }, [currentPlot?.id, progress.notesByPlotId]);
+  }, [currentPlot, progress.notesByPlotId, today]);
 
   if (!isOpen) return null;
 
